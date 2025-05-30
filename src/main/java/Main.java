@@ -1,11 +1,8 @@
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
-import static com.sun.jna.platform.win32.Win32VK.VK_OEM_MINUS;
-
 public class Main {
     public static void main(String[] args) throws Exception {
-        PseudoType.pressKey(VK_OEM_MINUS.code);
         PseudoType.setup();
         // creates frame
         SecureFrame s = new SecureFrame();
