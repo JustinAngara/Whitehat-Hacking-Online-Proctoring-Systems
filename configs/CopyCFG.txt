@@ -1,6 +1,24 @@
 EMPTY
 So this is the answer to my questions please work dangit
 <.ENDLINE>
+Sample text 1
+<.ENDLINE>
+WASDWASDWASD
+WA
+<.ENDLINE>
+WASDWASDWASD
+WA
+SDA
+<.ENDLINE>
+WASDWASDWASD
+WA
+SDA
+W
+DSA
+<.ENDLINE>
+WASDWASDWASD
+SAWED
+<.ENDLINE>
 WASDWASDWASD
 WA
 SDA

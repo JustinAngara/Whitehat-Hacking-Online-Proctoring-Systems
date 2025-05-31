@@ -1,8 +1,14 @@
+package com.hl.main;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ConfigurableApplicationContext;
+
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class Main {
     public static void main(String[] args) throws Exception {
+
+
         PseudoType.setup();
         // creates frame
         SecureFrame s = new SecureFrame();
@@ -10,7 +16,6 @@ public class Main {
 
         // put in multithread-emptyso this
         KeyListener k = new KeyListener();
-
 
 
         // this will run KeyListener
@@ -21,6 +26,10 @@ public class Main {
 
         // submit tasks to the thread pool
         executor.execute(k);
+
+        // will run springboot
+        ConfigurableApplicationContext context = SpringApplication.run(WebSocketApplication.class, args);
+
 
         // no longer point
         executor.shutdown();

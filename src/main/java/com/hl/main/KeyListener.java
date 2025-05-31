@@ -1,6 +1,8 @@
+package com.hl.main;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 
+import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,9 +18,12 @@ public class KeyListener implements Runnable {
     // VK_CODE, Indecie of text to point to
     Map<Integer, Integer> map;
 
+    static int currentIndex = 0;
+    static volatile boolean isTriggerOn;
 
-//    static volatile boolean isTriggerOn;
-    int[] hotkeys = new int[]{VK_C.code,VK_UP.code, VK_DOWN.code, VK_OEM_MINUS.code, VK_OEM_PLUS.code};
+    // Up Down respectively changes the toggle to paste
+    // - will assign the end, and PLUS will assign the start
+    int[] hotkeys = new int[]{VK_UP.code, VK_DOWN.code, VK_OEM_PLUS.code, VK_OEM_MINUS.code};
 
     public KeyListener() {
         map = new HashMap<>();
@@ -29,14 +34,31 @@ public class KeyListener implements Runnable {
 
     @Override
     public void run() {
+        isTriggerOn = true;
         int vkCodeC = 0x43;
-
+        Rectangle originalBound = SecureFrame.frame.getBounds();
+        Rectangle hiddenBounds = new Rectangle(-10000,0, (int) originalBound.getWidth(), (int) originalBound.getHeight());
         // continuously check if a keypress is hit
-        while (true) {
+        while (isTriggerOn) {
+            // checks for visibility
+            if((User32.INSTANCE.GetAsyncKeyState(VK_F10.code) & 0x8000) != 0){
+                // makes it so you can toggle the visiility of the jframe
+                boolean reverse = !SecureFrame.frame.getBounds().equals(originalBound);
+                Rectangle bound = reverse ? originalBound : hiddenBounds;
+                SecureFrame.frame.setBounds(bound);
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+
             // iterates through the hashmap
             for(Map.Entry<Integer, Integer> entry : map.entrySet()){
                 // chceks if a button from the hotkey is pressed
                 try {
+
                     if(isPressed(entry.getKey())){
                          try {
                              Thread.sleep(100);
@@ -44,10 +66,15 @@ public class KeyListener implements Runnable {
                              throw new RuntimeException(e);
                          }
                     }
+
+
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
             }
+
+
+
         }
     }
 
@@ -55,7 +82,9 @@ public class KeyListener implements Runnable {
         boolean t = (User32.INSTANCE.GetAsyncKeyState(vkCode) & 0x8000) != 0;
         if(t){
             // will put the indecie to recieve from
+            isTriggerOn = false;
             PseudoType.write(map.get(vkCode));
+            isTriggerOn = true;
         }
 
         return t;

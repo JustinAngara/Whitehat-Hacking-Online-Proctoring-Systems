@@ -16,6 +16,19 @@
     </parent>
 
     <dependencies>
+        <!-- JNA Core -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>5.13.0</version>
+        </dependency>
+
+        <!-- JNA Platform (includes HWND, User32, etc.) -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
+            <version>5.13.0</version>
+        </dependency>
         <!-- WebSocket support -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

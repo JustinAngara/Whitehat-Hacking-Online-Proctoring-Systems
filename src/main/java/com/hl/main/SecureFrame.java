@@ -1,3 +1,4 @@
+package com.hl.main;
 import com.sun.jna.Native;
 import com.sun.jna.Platform;
 import com.sun.jna.platform.win32.WinDef;
@@ -6,39 +7,76 @@ import com.sun.jna.win32.StdCallLibrary;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.image.BufferedImage;
 
 public class SecureFrame implements Runnable{
-
     static HWND hwnd;
     private static final int WDA_EXCLUDE = 0x00000011;  // updated to use WDA_EXCLUDE
     private static final int WDA_MONITOR = 0x00000001;
     static JFrame frame;
+    static JLabel label;
+    public static void frameSetup() throws Exception{
+        frame = new JFrame("SecureFrame");
+
+        frame.setAlwaysOnTop(true);
+        frame.setLocation(0, 0);
+        frame.setSize(0, 0);
+        frame.setLocationRelativeTo(null);
+        frame.setBackground(new Color(0, 0, 0, 255));
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setResizable(false);
+        frame.setUndecorated(true);
+        setupPanel();
+        frame.setVisible(true);
+        // let OS update new frame
+        Thread.sleep(1000);
+
+
+    }
+
+    public static void setupPanel() {
+        JPanel panel = new JPanel();
+        panel.setOpaque(false);
+        label = new JLabel("hidden from screnshare", SwingConstants.CENTER);
+        label.setFont(new Font("Arial", Font.BOLD, 20));
+        label.setForeground(Color.RED);
+        panel.setLayout(new BorderLayout());
+        panel.add(label, BorderLayout.CENTER);
+
+        frame.getContentPane().add(panel);
+
+        JLabel lblNewLabel = new JLabel("Press Up or Down to slide thorugh");
+        panel.add(lblNewLabel, BorderLayout.NORTH);
+        lblNewLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        lblNewLabel.setForeground(Color.RED);
+    }
+
+
 
 
     // setup the JNA calls
     public interface User32 extends StdCallLibrary {
+
         User32 INSTANCE = Native.load("user32", User32.class);
 
         boolean SetWindowDisplayAffinity(WinDef.HWND hWnd, int dwAffinity);
-
         int GWL_EXSTYLE = -20;
         int WS_EX_LAYERED = 0x80000;
         int WS_EX_TRANSPARENT = 0x00000020;
+
         int WS_EX_NOREDIRECTIONBITMAP = 0x00200000;
 
         HWND FindWindowA(String lpClassName, String lpWindowName);
-
         // exported func
         long GetWindowLongPtrW(HWND hWnd, int nIndex);
         long SetWindowLongPtrW(HWND hWnd, int nIndex, long dwNewLong);
         // 32-bit
         int GetWindowLong(HWND hWnd, int nIndex);
-        int SetWindowLong(HWND hWnd, int nIndex, int dwNewLong);
 
+        int SetWindowLong(HWND hWnd, int nIndex, int dwNewLong);
         boolean ShowWindow(HWND hWnd, int nCmdShow);
         boolean UpdateWindow(HWND hWnd);
         boolean InvalidateRect(HWND hWnd, Object lpRect, boolean bErase);
+
     }
 
     public static long getWindowLong(HWND hwnd, int index) {
@@ -56,33 +94,9 @@ public class SecureFrame implements Runnable{
             return User32.INSTANCE.SetWindowLong(hwnd, index, (int) newValue);
         }
     }
-
-    public static void frameSetup() throws Exception{
-        frame = new JFrame("SecureFrame");
-
-        frame.setAlwaysOnTop(true);
-        frame.setLocation(100, 50);
-        frame.setSize(0, 0);
-        frame.setLocationRelativeTo(null);
-        frame.setBackground(new Color(0, 0, 0, 255));
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setResizable(false);
-        JPanel panel = new JPanel();
-        panel.setOpaque(false);
-        JLabel label = new JLabel("hidden from screnshare", SwingConstants.CENTER);
-        label.setFont(new Font("Arial", Font.BOLD, 20));
-        label.setForeground(Color.RED);
-        panel.setLayout(new BorderLayout());
-        panel.add(label, BorderLayout.CENTER);
-
-        frame.setContentPane(panel);
-        frame.setVisible(true);
-        // let OS update new frame
-        Thread.sleep(1000);
-
-
-    }
-
+    /*
+    * This will change the properties of the window, don't change UI beyond here
+    * */
     public static void changeProperties(){
         hwnd = User32.INSTANCE.FindWindowA(null, "SecureFrame");
         if (hwnd == null) {
@@ -151,6 +165,7 @@ public class SecureFrame implements Runnable{
     @Override
     public void run() {
         try {
+            System.out.println("hit the entry");
             frameSetup();
             changeProperties();
         } catch (Exception e) {
