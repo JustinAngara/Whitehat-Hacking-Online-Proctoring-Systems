@@ -1,6 +1,90 @@
 # Whitehat-Hacking-Honorlock
+# Honorlock Real-Time WebSocket Interaction
 
-# React + TypeScript + Vite
+A full-stack application combining a Java-based WebSocket backend with a React + TypeScript frontend. Built to demonstrate real-time communication triggered by low-level key events and browser input, with GUI control and custom system hooks.
+
+---
+## 🎯 Purpose
+
+The goal of this system is to explore secure, local-to-remote interaction models by integrating:
+
+- Low-level system input (via Java and JNA)
+- AWT-based local GUI rendering
+- Real-time WebSocket messaging to a browser interface (React + Vite)
+
+
+## ⚠️ Security Implication
+Honorlock, and similar browser-based proctoring tools, are fundamentally limited by the sandbox of the browser and the fact that:
+
+They cannot fully monitor or block system-level applications, especially ones that:
+
+Don’t directly interact with the DOM
+
+Don’t rely on overlays or typical screen capture methods that bypass screenshare
+
+Avoid traditional process naming conventions
+
+This project makes it clear that Honorlock’s detection capabilities can be bypassed by:
+
+Running a native executable in parallel
+
+Leveraging input events or automation from the system level
+
+Communicating through standard WebSockets to interface with browser content
+
+No browser extension or JavaScript-based client can block this.
+
+## ✅ Ethical Use Disclaimer
+This project was created strictly for educational and ethical research purposes. It does not encourage or condone academic dishonesty. The intent is to raise awareness around the limitations of browser-only proctoring tools and to promote more transparent, accountable, and robust test-taking systems.
+
+
+
+This setup mimics real-world use cases where local user actions (e.g., keyboard triggers) control or synchronize with a secure browser-based dashboard, making it useful for:
+
+- Custom overlay systems
+- White-hat behavioral testing
+- Real-time user monitoring and control interfaces
+
+---
+
+## 🔧 Tech Stack
+
+| Layer     | Technology                         |
+|-----------|-------------------------------------|
+| Backend   | Java 22, Spring Boot (WebSocket)    |
+| Frontend  | Vite + React + TypeScript           |
+| GUI       | AWT + custom JFrame (SecureFrame)   |
+| Low-Level | JNA (`user32.dll`) for key events   |
+
+---
+
+## ⚙️ Features
+
+- Low-level keyboard listener & press/output using JNA (Windows only)
+- Upload pre-loaded messages to create a pseudotyper, emulating real human typing
+- Always invisible GUI from screenshare & toggleable visibility via hotkeys (F10) 
+- React frontend sends messages to Java backend over WebSocket
+- Java backend replies or broadcasts to connected clients
+- This 2 way communication allows a third party to intercept potential Quiz answers 
+- Java backend initialized alongside GUI and listener threads
+
+---
+
+## 🚀 Running the Project
+
+### 1. Backend (Java WebSocket Server)
+
+> **Requirements:** JDK 17+ and Maven
+
+```bash
+cd Honorlock
+mvn clean package
+java -jar target/honorlock-1.0-SNAPSHOT.jar
+
+
+
+
+# React + TypeScript + Vite (auto generated, may ignore)
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
