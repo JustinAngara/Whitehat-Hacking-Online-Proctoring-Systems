@@ -6,16 +6,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class Main {
+    static WebSocketHandler handler;
     public static void main(String[] args) throws Exception {
 
 
         PseudoType.setup();
+
         // creates frame
         SecureFrame s = new SecureFrame();
         s.run();
 
-        // put in multithread-emptyso this
-        KeyListener k = new KeyListener();
 
 
         // this will run KeyListener
@@ -24,12 +24,14 @@ public class Main {
 
         ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(coreCount);
 
-        // submit tasks to the thread pool
+        // put in another thread so it works async
+        KeyListener k = new KeyListener();
         executor.execute(k);
+
 
         // will run springboot
         ConfigurableApplicationContext context = SpringApplication.run(WebSocketApplication.class, args);
-
+        handler = context.getBean(WebSocketHandler.class);
 
         // no longer point
         executor.shutdown();

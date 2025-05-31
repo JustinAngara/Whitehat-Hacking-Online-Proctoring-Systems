@@ -1,24 +1,46 @@
 package com.hl.main;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Component
 public class WebSocketHandler extends TextWebSocketHandler {
     private WebSocketSession session;
+    private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        this.session = session;
-        System.out.println("Connection established");
+        sessions.put(session.getId(), session);
+        System.out.println("Session connected: " + session.getId());
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        sessions.remove(session.getId());
+        System.out.println("Session closed: " + session.getId());
+    }
+
+
+    @Override
+    public void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String incoming = message.getPayload();
         System.out.println("Received from React: " + incoming);
 
-        // Example response:
-        String reply = "{\"msg\":\"Hello from Java!\"}";
-        session.sendMessage(new TextMessage(reply));
+
     }
+
+    public void replyMessage(String message) throws IOException {
+        for (WebSocketSession session : sessions.values()) {
+            if (session.isOpen()) {
+                session.sendMessage(new TextMessage(message));
+            }
+        }
+    }
+
 }

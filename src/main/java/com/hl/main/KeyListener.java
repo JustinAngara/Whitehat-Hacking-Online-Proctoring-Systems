@@ -3,10 +3,14 @@ import com.sun.jna.Library;
 import com.sun.jna.Native;
 
 import java.awt.*;
+import java.awt.event.KeyEvent;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 import static com.sun.jna.platform.win32.Win32VK.*;
+import static java.awt.event.KeyEvent.VK_BACK_SLASH;
+import static java.awt.event.KeyEvent.VK_DEAD_TILDE;
 
 public class KeyListener implements Runnable {
     public interface User32 extends Library {
@@ -52,26 +56,33 @@ public class KeyListener implements Runnable {
                     throw new RuntimeException(e);
                 }
             }
-
-
-            // iterates through the hashmap
-            for(Map.Entry<Integer, Integer> entry : map.entrySet()){
-                // chceks if a button from the hotkey is pressed
+            else if((User32.INSTANCE.GetAsyncKeyState(VK_OEM_PLUS.code) & 0x8000) != 0){
                 try {
-
-                    if(isPressed(entry.getKey())){
-                         try {
-                             Thread.sleep(100);
-                         } catch (InterruptedException e) {
-                             throw new RuntimeException(e);
-                         }
-                    }
-
-
-                } catch (InterruptedException e) {
+                    Main.handler.replyMessage("test from java");
+                } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             }
+
+
+            // iterates through the hashmap
+//            for(Map.Entry<Integer, Integer> entry : map.entrySet()){
+//                // chceks if a button from the hotkey is pressed
+//                try {
+//
+//                    if(isPressed(entry.getKey())){
+//                         try {
+//                             Thread.sleep(100);
+//                         } catch (InterruptedException e) {
+//                             throw new RuntimeException(e);
+//                         }
+//                    }
+//
+//
+//                } catch (InterruptedException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }
 
 
 

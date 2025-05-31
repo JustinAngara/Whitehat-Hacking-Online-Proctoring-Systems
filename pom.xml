@@ -54,12 +54,6 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Optional: Dev tools -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-        </dependency>
     </dependencies>
 
     <build>

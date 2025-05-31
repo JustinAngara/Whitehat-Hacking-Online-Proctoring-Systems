@@ -5,6 +5,7 @@ type Message = string;
 const WebSocketClient: React.FC = () => {
   const ws = useRef<WebSocket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState<string>("");
 
   useEffect(() => {
     ws.current = new WebSocket("ws://localhost:8080/ws");
@@ -33,19 +34,26 @@ const WebSocketClient: React.FC = () => {
   };
 
   const sendMessage = () => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      const payload = { action: "user_input", content: "Hello from React TS" };
+    if (ws.current?.readyState === WebSocket.OPEN && inputValue.trim() !== "") {
+      const payload = { action: "user_input", content: inputValue };
       ws.current.send(JSON.stringify(payload));
-      appendMessage("You: Hello from React TS");
+      appendMessage(`You: ${inputValue}`);
+      setInputValue(""); // clear input field
     }
   };
 
   return (
     <div>
       <h2>WebSocket Client (TS)</h2>
-      
-      <input></input>
+
+      <input
+        id="inputField"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        placeholder="Type a message"
+      />
       <button onClick={sendMessage}>Send to Java</button>
+
       <ul>
         {messages.map((msg, i) => (
           <li key={i}>{msg}</li>
