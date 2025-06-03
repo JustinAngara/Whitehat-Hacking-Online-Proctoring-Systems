@@ -13,7 +13,8 @@ public class SecureFrame implements Runnable{
     private static final int WDA_EXCLUDE = 0x00000011;  // updated to use WDA_EXCLUDE
     private static final int WDA_MONITOR = 0x00000001;
     static JFrame frame;
-    static JLabel label;
+    static JLabel titleLabel;
+    static JLabel contentLabel;
     public static void frameSetup() throws Exception{
         frame = new JFrame("SecureFrame");
 
@@ -25,7 +26,7 @@ public class SecureFrame implements Runnable{
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setResizable(false);
         frame.setUndecorated(true);
-        setupPanel();
+        setupContent();
         frame.setVisible(true);
         // let OS update new frame
         Thread.sleep(1000);
@@ -33,21 +34,22 @@ public class SecureFrame implements Runnable{
 
     }
 
-    public static void setupPanel() {
+    public static void setupContent() {
         JPanel panel = new JPanel();
         panel.setOpaque(false);
-        label = new JLabel("hidden from screnshare", SwingConstants.CENTER);
-        label.setFont(new Font("Arial", Font.BOLD, 20));
-        label.setForeground(Color.RED);
+        titleLabel = new JLabel("hidden from screnshare", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        titleLabel.setForeground(Color.RED);
         panel.setLayout(new BorderLayout());
-        panel.add(label, BorderLayout.CENTER);
+        panel.add(titleLabel, BorderLayout.CENTER);
 
         frame.getContentPane().add(panel);
 
-        JLabel lblNewLabel = new JLabel("Press Up or Down to slide thorugh");
-        panel.add(lblNewLabel, BorderLayout.NORTH);
-        lblNewLabel.setFont(new Font("Arial", Font.BOLD, 20));
-        lblNewLabel.setForeground(Color.RED);
+        contentLabel = new JLabel("Press Up or Down to slide thorugh");
+        panel.add(contentLabel, BorderLayout.NORTH);
+        contentLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        contentLabel.setForeground(Color.RED);
+
     }
 
 

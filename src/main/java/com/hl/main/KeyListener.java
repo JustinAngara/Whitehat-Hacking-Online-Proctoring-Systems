@@ -9,8 +9,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.sun.jna.platform.win32.Win32VK.*;
-import static java.awt.event.KeyEvent.VK_BACK_SLASH;
-import static java.awt.event.KeyEvent.VK_DEAD_TILDE;
 
 public class KeyListener implements Runnable {
     public interface User32 extends Library {
@@ -70,7 +68,7 @@ public class KeyListener implements Runnable {
 //                // chceks if a button from the hotkey is pressed
 //                try {
 //
-//                    if(isPressed(entry.getKey())){
+//                    if(runPseudoType(entry.getKey())){
 //                         try {
 //                             Thread.sleep(100);
 //                         } catch (InterruptedException e) {
@@ -88,9 +86,11 @@ public class KeyListener implements Runnable {
 
         }
     }
-
-    public boolean isPressed(int vkCode) throws InterruptedException {
-        boolean t = (User32.INSTANCE.GetAsyncKeyState(vkCode) & 0x8000) != 0;
+    public boolean isPressed(int vkCode){
+        return (User32.INSTANCE.GetAsyncKeyState(vkCode) & 0x8000) != 0;
+    }
+    public boolean runPseudoType(int vkCode) throws InterruptedException {
+        boolean t = isPressed(vkCode);
         if(t){
             // will put the indecie to recieve from
             isTriggerOn = false;
