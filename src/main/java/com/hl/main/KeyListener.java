@@ -33,9 +33,11 @@ public class KeyListener implements Runnable {
             map.put(hotkeys[i], i);
         }
     }
-
+    public void run(){}
+/*
     @Override
     public void run() {
+
         isTriggerOn = true;
         int vkCodeC = 0x43;
         Rectangle originalBound = SecureFrame.frame.getBounds();
@@ -100,4 +102,6 @@ public class KeyListener implements Runnable {
 
         return t;
     }
+*/
+
 }

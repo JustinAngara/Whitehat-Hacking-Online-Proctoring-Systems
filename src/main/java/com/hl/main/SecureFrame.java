@@ -12,26 +12,61 @@ public class SecureFrame implements Runnable{
     static HWND hwnd;
     private static final int WDA_EXCLUDE = 0x00000011;  // updated to use WDA_EXCLUDE
     private static final int WDA_MONITOR = 0x00000001;
-    static JFrame frame;
+    static JWindow frame;  // Changed from JFrame to JWindow
     static JLabel titleLabel;
     static JLabel contentLabel;
+
+    // setup the JNA calls
+    public interface User32 extends StdCallLibrary {
+
+        User32 INSTANCE = Native.load("user32", User32.class);
+
+        boolean SetWindowDisplayAffinity(WinDef.HWND hWnd, int dwAffinity);
+        int GWL_EXSTYLE = -20;
+        int WS_EX_LAYERED = 0x80000;
+        int WS_EX_TRANSPARENT = 0x00000020;
+        int WS_EX_NOREDIRECTIONBITMAP = 0x00200000;
+
+        HWND FindWindowA(String lpClassName, String lpWindowName);
+        HWND GetForegroundWindow();
+        HWND GetActiveWindow();
+        int GetWindowThreadProcessId(HWND hWnd, int[] lpdwProcessId);
+
+        // exported func
+        long GetWindowLongPtrW(HWND hWnd, int nIndex);
+        long SetWindowLongPtrW(HWND hWnd, int nIndex, long dwNewLong);
+        // 32-bit
+        int GetWindowLong(HWND hWnd, int nIndex);
+        int SetWindowLong(HWND hWnd, int nIndex, int dwNewLong);
+        boolean ShowWindow(HWND hWnd, int nCmdShow);
+        boolean UpdateWindow(HWND hWnd);
+        boolean InvalidateRect(HWND hWnd, Object lpRect, boolean bErase);
+
+        // Additional methods for finding JWindow
+        boolean EnumWindows(WndEnumProc lpEnumFunc, int lParam);
+        int GetWindowTextA(HWND hWnd, byte[] lpString, int nMaxCount);
+        int GetClassNameA(HWND hWnd, byte[] lpClassName, int nMaxCount);
+    }
+
+    // Kernel32 interface for process functions
+    public interface Kernel32 extends StdCallLibrary {
+        Kernel32 INSTANCE = Native.load("kernel32", Kernel32.class);
+        int GetCurrentProcessId();
+    }
+
     public static void frameSetup() throws Exception{
-        frame = new JFrame("SecureFrame");
+        frame = new JWindow();  // Using JWindow instead of JFrame
 
         frame.setAlwaysOnTop(true);
         frame.setLocation(0, 0);
         frame.setSize(0, 0);
         frame.setLocationRelativeTo(null);
         frame.setBackground(new Color(0, 0, 0, 255));
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setResizable(false);
-        frame.setUndecorated(true);
+        // JWindow doesn't have setDefaultCloseOperation or setResizable or setUndecorated
         setupContent();
         frame.setVisible(true);
         // let OS update new frame
         Thread.sleep(1000);
-
-
     }
 
     public static void setupContent() {
@@ -49,36 +84,13 @@ public class SecureFrame implements Runnable{
         panel.add(contentLabel, BorderLayout.NORTH);
         contentLabel.setFont(new Font("Arial", Font.BOLD, 20));
         contentLabel.setForeground(Color.RED);
-
     }
 
-
-
-
-    // setup the JNA calls
-    public interface User32 extends StdCallLibrary {
-
-        User32 INSTANCE = Native.load("user32", User32.class);
-
-        boolean SetWindowDisplayAffinity(WinDef.HWND hWnd, int dwAffinity);
-        int GWL_EXSTYLE = -20;
-        int WS_EX_LAYERED = 0x80000;
-        int WS_EX_TRANSPARENT = 0x00000020;
-
-        int WS_EX_NOREDIRECTIONBITMAP = 0x00200000;
-
-        HWND FindWindowA(String lpClassName, String lpWindowName);
-        // exported func
-        long GetWindowLongPtrW(HWND hWnd, int nIndex);
-        long SetWindowLongPtrW(HWND hWnd, int nIndex, long dwNewLong);
-        // 32-bit
-        int GetWindowLong(HWND hWnd, int nIndex);
-
-        int SetWindowLong(HWND hWnd, int nIndex, int dwNewLong);
-        boolean ShowWindow(HWND hWnd, int nCmdShow);
-        boolean UpdateWindow(HWND hWnd);
-        boolean InvalidateRect(HWND hWnd, Object lpRect, boolean bErase);
-
+    /*
+    * Interface for window enumeration
+    * */
+    public interface WndEnumProc extends StdCallLibrary.StdCallCallback {
+        boolean callback(HWND hWnd, int lParam);
     }
 
     public static long getWindowLong(HWND hwnd, int index) {
@@ -96,11 +108,55 @@ public class SecureFrame implements Runnable{
             return User32.INSTANCE.SetWindowLong(hwnd, index, (int) newValue);
         }
     }
+
     /*
-    * This will change the properties of the window, don't change UI beyond here
+    * method to find JWindow handle since it doesn't have a title
     * */
+    public static HWND findJWindowHandle() {
+        final HWND[] foundWindow = {null};
+        final int currentProcessId = Kernel32.INSTANCE.GetCurrentProcessId();
+
+        WndEnumProc enumProc = new WndEnumProc() {
+            @Override
+            public boolean callback(HWND hWnd, int lParam) {
+                int[] processId = new int[1];
+                User32.INSTANCE.GetWindowThreadProcessId(hWnd, processId);
+
+                // Check if window belongs to our process
+                if (processId[0] == currentProcessId) {
+                    byte[] className = new byte[256];
+                    int classNameLength = User32.INSTANCE.GetClassNameA(hWnd, className, className.length);
+                    if (classNameLength > 0) {
+                        String classNameStr = new String(className, 0, classNameLength);
+                        // JWindow typically has class name starting with "SunAwtFrame" or similar
+                        if (classNameStr.contains("SunAwtFrame") || classNameStr.contains("SunAwtWindow")) {
+                            // Additional check: verify window dimensions match our JWindow
+                            foundWindow[0] = hWnd;
+                            return false; // Stop enumeration
+                        }
+                    }
+                }
+                return true; // Continue enumeration
+            }
+        };
+
+        User32.INSTANCE.EnumWindows(enumProc, 0);
+        return foundWindow[0];
+    }
+
+    /*
+     * This will change the properties of the window, don't change UI beyond here
+     * */
     public static void changeProperties(){
-        hwnd = User32.INSTANCE.FindWindowA(null, "SecureFrame");
+        // Try multiple methods to find the JWindow handle
+        hwnd = User32.INSTANCE.FindWindowA(null, "SecureFrame"); // This will likely fail for JWindow
+        if (hwnd == null) {
+            hwnd = findJWindowHandle(); // Use our custom method
+        }
+        if (hwnd == null) {
+            hwnd = User32.INSTANCE.GetForegroundWindow(); // Last resort - get current foreground window
+        }
+
         if (hwnd == null) {
             System.out.println("frame doesn't exist");
             return;
@@ -113,11 +169,11 @@ public class SecureFrame implements Runnable{
         // set extended window styles
         long exStyle = getWindowLong(hwnd, User32.GWL_EXSTYLE);
         long newStyle = exStyle
-                        | User32.WS_EX_LAYERED
-                        | User32.WS_EX_TRANSPARENT
-                        | User32.WS_EX_NOREDIRECTIONBITMAP
+                | User32.WS_EX_LAYERED
+                | User32.WS_EX_TRANSPARENT
+                | User32.WS_EX_NOREDIRECTIONBITMAP
 //                        | 0x00200000 // WS_EX_NOREDIRECTIONBITMAP
-                        | 0x00000080; // WS_EX_TOOLWINDOW
+                | 0x00000080; // WS_EX_TOOLWINDOW
         long setResult = setWindowLong(hwnd, User32.GWL_EXSTYLE, newStyle);
         System.out.println("result: " + setResult);
 
@@ -127,17 +183,12 @@ public class SecureFrame implements Runnable{
 
         // allow clickability through
 
-
-
-
         System.out.println("window is now protected from screen capture");
         System.out.println("extended style changed from: 0x" + Long.toHexString(exStyle) +
                 " to: 0x" + Long.toHexString(newStyle));
 
         // this will allow to display the frame and it's entirety
         frame.setSize(600, 300);
-
-
     }
 
     /*
@@ -161,7 +212,6 @@ public class SecureFrame implements Runnable{
         User32.INSTANCE.UpdateWindow(hwnd);
 
         System.out.println("Window protection removed");
-
     }
 
     @Override
@@ -173,7 +223,5 @@ public class SecureFrame implements Runnable{
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
     }
-
 }
