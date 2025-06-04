@@ -52,9 +52,18 @@ public class SecureFrame implements Runnable{
     public interface Kernel32 extends StdCallLibrary {
         Kernel32 INSTANCE = Native.load("kernel32", Kernel32.class);
         int GetCurrentProcessId();
+        HWND GetConsoleWindow();
+        boolean ShowWindow(HWND hWnd, int nCmdShow);
+
+        // constants for ShowWindow
+        int SW_HIDE = 0;
+        int SW_SHOW = 5;
     }
 
     public static void frameSetup() throws Exception{
+        // Hide console window if running from command line
+        hideConsoleWindow();
+
         frame = new JWindow();  // Using JWindow instead of JFrame
 
         frame.setAlwaysOnTop(true);
@@ -86,9 +95,11 @@ public class SecureFrame implements Runnable{
         contentLabel.setForeground(Color.RED);
     }
 
-    /*
-    * Interface for window enumeration
-    * */
+
+
+    /**
+     * Interface for window enumeration
+     * */
     public interface WndEnumProc extends StdCallLibrary.StdCallCallback {
         boolean callback(HWND hWnd, int lParam);
     }
@@ -109,9 +120,9 @@ public class SecureFrame implements Runnable{
         }
     }
 
-    /*
-    * method to find JWindow handle since it doesn't have a title
-    * */
+    /**
+     * Method to find JWindow handle since it doesn't have a title
+     * */
     public static HWND findJWindowHandle() {
         final HWND[] foundWindow = {null};
         final int currentProcessId = Kernel32.INSTANCE.GetCurrentProcessId();
@@ -130,7 +141,7 @@ public class SecureFrame implements Runnable{
                         String classNameStr = new String(className, 0, classNameLength);
                         // JWindow typically has class name starting with "SunAwtFrame" or similar
                         if (classNameStr.contains("SunAwtFrame") || classNameStr.contains("SunAwtWindow")) {
-                            // Additional check: verify window dimensions match our JWindow
+                            // verify window dimensions match our JWindow
                             foundWindow[0] = hWnd;
                             return false; // Stop enumeration
                         }
@@ -144,7 +155,28 @@ public class SecureFrame implements Runnable{
         return foundWindow[0];
     }
 
-    /*
+    /**
+     *  Method to hide console window
+     *  */
+    public static void hideConsoleWindow() {
+        HWND consoleWindow = Kernel32.INSTANCE.GetConsoleWindow();
+        if (consoleWindow != null) {
+            Kernel32.INSTANCE.ShowWindow(consoleWindow, Kernel32.SW_HIDE);
+            System.out.println("Console window hidden");
+        }
+    }
+
+    /**
+     * change process name using system properties (less effective but safer)
+     * */
+    public static void changeProcessName(String newName) {
+        System.setProperty("java.awt.headless", "false");
+        // This doesn't actually change the process name but can help with some detection
+        System.setProperty("sun.java.command", newName);
+        System.setProperty("sun.java2d.noddraw", "true");
+    }
+
+    /**
      * This will change the properties of the window, don't change UI beyond here
      * */
     public static void changeProperties(){
@@ -154,7 +186,7 @@ public class SecureFrame implements Runnable{
             hwnd = findJWindowHandle(); // Use our custom method
         }
         if (hwnd == null) {
-            hwnd = User32.INSTANCE.GetForegroundWindow(); // Last resort - get current foreground window
+            hwnd = User32.INSTANCE.GetForegroundWindow(); // get current foreground window
         }
 
         if (hwnd == null) {
@@ -162,7 +194,9 @@ public class SecureFrame implements Runnable{
             return;
         }
 
-        // set up Window Display Affinity (primary method)
+        /**
+         * set up Window Display Affinity (primary method)
+         * */
         boolean affinityResult = User32.INSTANCE.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDE);
         System.out.println("SetWindowDisplayAffinity result: " + affinityResult);
 
@@ -191,7 +225,7 @@ public class SecureFrame implements Runnable{
         frame.setSize(600, 300);
     }
 
-    /*
+    /**
      * failsafe if accidentally brick an entire application
      * note: it has happened, don't test on external project
      */
@@ -218,6 +252,7 @@ public class SecureFrame implements Runnable{
     public void run() {
         try {
             System.out.println("hit the entry");
+            changeProcessName("SystemService");
             frameSetup();
             changeProperties();
         } catch (Exception e) {
