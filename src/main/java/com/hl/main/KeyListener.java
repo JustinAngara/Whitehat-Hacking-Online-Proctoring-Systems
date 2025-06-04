@@ -33,8 +33,8 @@ public class KeyListener implements Runnable {
             map.put(hotkeys[i], i);
         }
     }
-    public void run(){}
-/*
+
+
     @Override
     public void run() {
 
@@ -102,6 +102,6 @@ public class KeyListener implements Runnable {
 
         return t;
     }
-*/
+
 
 }
