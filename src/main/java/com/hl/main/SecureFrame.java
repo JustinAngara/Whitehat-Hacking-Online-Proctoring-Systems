@@ -6,7 +6,13 @@ import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.win32.StdCallLibrary;
 
 import javax.swing.*;
+import javax.swing.text.Caret;
+import javax.swing.text.DefaultCaret;
 import java.awt.*;
+import java.awt.geom.RoundRectangle2D;
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 public class SecureFrame implements Runnable{
     static HWND hwnd;
@@ -15,7 +21,7 @@ public class SecureFrame implements Runnable{
     static JWindow frame;  // Changed from JFrame to JWindow
     static JLabel titleLabel;
     static JLabel contentLabel;
-
+    static Color textColor;
     // setup the JNA calls
     public interface User32 extends StdCallLibrary {
 
@@ -60,40 +66,86 @@ public class SecureFrame implements Runnable{
         int SW_SHOW = 5;
     }
 
-    public static void frameSetup() throws Exception{
+    public static void frameSetup() throws Exception {
+        textColor = new Color(235, 235, 245);
         // Hide console window if running from command line
         hideConsoleWindow();
 
-        frame = new JWindow();  // Using JWindow instead of JFrame
-
+        // init jframe
+        frame = new JWindow();
         frame.setAlwaysOnTop(true);
-        frame.setLocation(0, 0);
-        frame.setSize(0, 0);
-        frame.setLocationRelativeTo(null);
-        frame.setBackground(new Color(0, 0, 0, 255));
-        // JWindow doesn't have setDefaultCloseOperation or setResizable or setUndecorated
+        frame.setSize(600, 400);
+        applyRoundedCorners();
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int x = screenSize.width - frame.getWidth();
+        int y = screenSize.height - frame.getHeight();
+
         setupContent();
+        frame.setLocation(x, y);
         frame.setVisible(true);
+
         // let OS update new frame
         Thread.sleep(1000);
     }
 
     public static void setupContent() {
-        JPanel panel = new JPanel();
-        panel.setOpaque(false);
-        titleLabel = new JLabel("hidden from screnshare", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 20));
-        titleLabel.setForeground(Color.RED);
-        panel.setLayout(new BorderLayout());
-        panel.add(titleLabel, BorderLayout.CENTER);
+        JPanel panel = createTransparentPanel(new BorderLayout());
+
+        // title label
+        titleLabel = new JLabel("Press Up or Down to slide thorugh", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        titleLabel.setForeground(textColor);
+        titleLabel.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.BLACK));
+
+        // body content as JTextArea
+        JTextArea contentArea = new JTextArea("hidden from screenshare\ntesttetetstastauaiwhd\nauwheuioashdfuioasfihojuioahnfsiuhosdiuhf");
+        setAreaProperties(contentArea);
+
+
+        JPanel titleContainer = createColoredPanel(new Color(48, 25, 52, 160));
+        titleContainer.add(titleLabel, BorderLayout.CENTER);
+
+        JPanel contentContainer = createColoredPanel(new Color(38, 20, 46, 160));
+        contentContainer.add(contentArea, BorderLayout.CENTER);
+
+        panel.add(titleContainer, BorderLayout.NORTH);
+        panel.add(contentContainer, BorderLayout.CENTER);
 
         frame.getContentPane().add(panel);
-
-        contentLabel = new JLabel("Press Up or Down to slide thorugh");
-        panel.add(contentLabel, BorderLayout.NORTH);
-        contentLabel.setFont(new Font("Arial", Font.BOLD, 20));
-        contentLabel.setForeground(Color.RED);
+        frame.setBackground(new Color(0, 0, 0, 65));
     }
+
+    private static JPanel createTransparentPanel(LayoutManager layout) {
+        JPanel panel = new JPanel(layout);
+        panel.setOpaque(false);
+        return panel;
+    }
+
+    private static JPanel createColoredPanel(Color bgColor) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(true);
+        panel.setBackground(bgColor);
+        return panel;
+    }
+    private static void setAreaProperties(JTextArea contentArea){
+        contentArea.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        contentArea.setForeground(textColor);
+        contentArea.setOpaque(false);
+        contentArea.setEditable(false);
+        contentArea.setWrapStyleWord(true);
+        contentArea.setLineWrap(true);
+        contentArea.setHighlighter(null);
+        contentArea.setFocusable(false);
+        contentArea.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    }
+
+    private static void applyRoundedCorners() {
+        frame.setShape(new RoundRectangle2D.Double(0, 0, frame.getWidth(), frame.getHeight(), 40, 40));
+    }
+
+
+
 
 
 
@@ -221,8 +273,6 @@ public class SecureFrame implements Runnable{
         System.out.println("extended style changed from: 0x" + Long.toHexString(exStyle) +
                 " to: 0x" + Long.toHexString(newStyle));
 
-        // this will allow to display the frame and it's entirety
-        frame.setSize(600, 300);
     }
 
     /**
@@ -247,7 +297,13 @@ public class SecureFrame implements Runnable{
 
         System.out.println("Window protection removed");
     }
+    public static void changeIcon() throws MalformedURLException {
+        URL url = new File("C:\\Users\\justi\\IdeaProjects\\Honorlock\\configs\\walk-0.png").toURI().toURL();
 
+        Toolkit kit = Toolkit.getDefaultToolkit();
+        Image img = kit.createImage(url);
+        frame.setIconImage(img);
+    }
     @Override
     public void run() {
         try {
@@ -255,6 +311,7 @@ public class SecureFrame implements Runnable{
             changeProcessName("SystemService");
             frameSetup();
             changeProperties();
+            changeIcon();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
