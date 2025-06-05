@@ -6,8 +6,6 @@ import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.win32.StdCallLibrary;
 
 import javax.swing.*;
-import javax.swing.text.Caret;
-import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import java.io.File;
@@ -20,8 +18,9 @@ public class SecureFrame implements Runnable{
     private static final int WDA_MONITOR = 0x00000001;
     static JWindow frame;  // Changed from JFrame to JWindow
     static JLabel titleLabel;
-    static JLabel contentLabel;
     static Color textColor;
+    static JTextArea contentArea;
+    static JPanel contentContainer;
     // setup the JNA calls
     public interface User32 extends StdCallLibrary {
 
@@ -48,7 +47,7 @@ public class SecureFrame implements Runnable{
         boolean UpdateWindow(HWND hWnd);
         boolean InvalidateRect(HWND hWnd, Object lpRect, boolean bErase);
 
-        // Additional methods for finding JWindow
+        // additional methods for finding JWindow
         boolean EnumWindows(WndEnumProc lpEnumFunc, int lParam);
         int GetWindowTextA(HWND hWnd, byte[] lpString, int nMaxCount);
         int GetClassNameA(HWND hWnd, byte[] lpClassName, int nMaxCount);
@@ -63,7 +62,6 @@ public class SecureFrame implements Runnable{
 
         // constants for ShowWindow
         int SW_HIDE = 0;
-        int SW_SHOW = 5;
     }
 
     public static void frameSetup() throws Exception {
@@ -93,20 +91,18 @@ public class SecureFrame implements Runnable{
         JPanel panel = createTransparentPanel(new BorderLayout());
 
         // title label
-        titleLabel = new JLabel("Press Up or Down to slide thorugh", SwingConstants.CENTER);
+        titleLabel = new JLabel("Press Up or Down to slide thorugh (+/- to execute)", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         titleLabel.setForeground(textColor);
         titleLabel.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.BLACK));
 
-        // body content as JTextArea
-        JTextArea contentArea = new JTextArea("hidden from screenshare\ntuiwahuioawhuioriouah\nioashduiasuiod");
+        contentArea = new JTextArea("CONTENT");
         setAreaProperties(contentArea);
 
-
         JPanel titleContainer = createColoredPanel(new Color(48, 25, 52, 160));
-        titleContainer.add(titleLabel, BorderLayout.CENTER);
+        contentContainer = createColoredPanel(new Color(38, 20, 46, 160));
 
-        JPanel contentContainer = createColoredPanel(new Color(38, 20, 46, 160));
+        titleContainer.add(titleLabel, BorderLayout.CENTER);
         contentContainer.add(contentArea, BorderLayout.CENTER);
 
         panel.add(titleContainer, BorderLayout.NORTH);
@@ -115,6 +111,30 @@ public class SecureFrame implements Runnable{
         frame.getContentPane().add(panel);
         frame.setBackground(new Color(0, 0, 0, 65));
     }
+
+    public static void changeContent(String content) {
+        // clear the text area completely
+        contentArea.setText("");
+
+        // force a complete repaint of the entire frame to clear ghost text
+        frame.repaint();
+
+        // small delay to ensure the clear operation completes
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+
+        contentArea.setText(content);
+
+        // refresh the layout and repaint
+        contentArea.revalidate();
+        contentContainer.revalidate();
+        frame.repaint();
+    }
+
 
     private static JPanel createTransparentPanel(LayoutManager layout) {
         JPanel panel = new JPanel(layout);
@@ -287,37 +307,35 @@ public class SecureFrame implements Runnable{
             return;
         }
 
-        System.out.println("Attempting to remove window stealth protection...");
-
-        // Method 1: Try to restore Window Display Affinity to normal monitoring
+        // Method 1: try to restore Window Display Affinity to normal monitoring
         boolean affinityResult1 = User32.INSTANCE.SetWindowDisplayAffinity(hwnd, WDA_MONITOR);
         System.out.println("Method 1 - SetWindowDisplayAffinity(WDA_MONITOR) result: " + affinityResult1);
 
-        // Method 2: Try setting affinity to 0 (default/none)
+        // Method 2: try setting affinity to 0 (default/none)
         boolean affinityResult2 = User32.INSTANCE.SetWindowDisplayAffinity(hwnd, 0);
         System.out.println("Method 2 - SetWindowDisplayAffinity(0) result: " + affinityResult2);
 
-        // Get current extended window style
+        // get current extended window style
         long exStyle = getWindowLong(hwnd, User32.GWL_EXSTYLE);
         System.out.println("Current extended style: 0x" + Long.toHexString(exStyle));
 
-        // Remove stealth-related extended window styles
+        // remove stealth-related extended window styles
         long newStyle = exStyle & ~(
                 User32.WS_EX_TRANSPARENT |       // Remove transparency (click-through)
                         User32.WS_EX_NOREDIRECTIONBITMAP | // Remove no-redirection bitmap
                         0x00000080                       // Remove WS_EX_TOOLWINDOW
         );
 
-        // Apply the restored style
+        // apply the restored style
         long setResult = setWindowLong(hwnd, User32.GWL_EXSTYLE, newStyle);
         System.out.println("SetWindowLong result: " + setResult);
 
-        // Force multiple window updates
+        // force multiple window updates
         User32.INSTANCE.InvalidateRect(hwnd, null, true);
         User32.INSTANCE.UpdateWindow(hwnd);
         User32.INSTANCE.ShowWindow(hwnd, 5); // SW_SHOW
 
-        // Try hiding and showing the window to reset its state
+        // try hiding and showing the window to reset its state
         User32.INSTANCE.ShowWindow(hwnd, 0); // SW_HIDE
         try {
             Thread.sleep(100);
@@ -326,14 +344,14 @@ public class SecureFrame implements Runnable{
         }
         User32.INSTANCE.ShowWindow(hwnd, 5); // SW_SHOW
 
-        // Restore normal window behavior at Java level
+        // restore normal window behavior at Java level
         SwingUtilities.invokeLater(() -> {
-            frame.setVisible(true);  // Show again to reset
+            frame.setVisible(true);  // show again to reset
             frame.toFront();
             frame.repaint();
         });
 
-        // Wait and force final updates
+        // wait and force final updates
         try {
             Thread.sleep(200);
             User32.INSTANCE.InvalidateRect(hwnd, null, true);
@@ -342,13 +360,8 @@ public class SecureFrame implements Runnable{
             Thread.currentThread().interrupt();
         }
 
-        System.out.println("Stealth removal attempted with multiple methods");
         System.out.println("Extended style changed from: 0x" + Long.toHexString(exStyle) +
                 " to: 0x" + Long.toHexString(newStyle));
-        System.out.println("If window is still hidden from screenshare, you may need to:");
-        System.out.println("1. Restart the application completely");
-        System.out.println("2. Create a new window instance");
-        System.out.println("Note: WDA_EXCLUDE can be persistent until window recreation");
     }
 
 
@@ -367,6 +380,10 @@ public class SecureFrame implements Runnable{
             frameSetup();
             changeProperties();
             changeIcon();
+
+            // uncomment if you want to remove the stealth gui
+//            Thread.sleep(2500);
+//            undoChangedProperties();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

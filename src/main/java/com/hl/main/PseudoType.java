@@ -17,6 +17,8 @@ import static com.sun.jna.platform.win32.WinUser.INPUT.INPUT_KEYBOARD;
 import static com.sun.jna.platform.win32.WinUser.KEYBDINPUT.KEYEVENTF_KEYUP;
 
 public class PseudoType {
+    static int index = 0;
+
     static String fileLoc ="C:\\Users\\justi\\IdeaProjects\\Honorlock\\configs\\CopyCFG.txt";
     public static String[] stringsArr;
     public interface User32 extends StdCallLibrary {
@@ -28,6 +30,26 @@ public class PseudoType {
     public static void setup() throws FileNotFoundException, InterruptedException {
         populate();
     }
+
+    /*
+    * This method is used to increment the index in which we want to grab the string
+    * */
+    public static int increment(int delta){
+        int length = stringsArr.length;
+
+        // wrap around using modular arithmetic
+        index = (index + delta) % length;
+
+        // ensure positive index if delta is negative
+        if (index < 0) {
+            index += length;
+        }
+//        System.out.println("new index :"+index);
+        // i want to update the content array
+        SecureFrame.changeContent(stringsArr[index]);
+        return index;
+    }
+
 
     public static void populate() throws FileNotFoundException {
         // go to file location and add

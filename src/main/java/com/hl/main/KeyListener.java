@@ -17,8 +17,6 @@ public class KeyListener implements Runnable {
         short GetAsyncKeyState(int vKey);
     }
 
-
-    static int currentIndex = 0;
     static volatile boolean isTriggerOn;
 
     public KeyListener() {}
@@ -28,7 +26,7 @@ public class KeyListener implements Runnable {
     public void run() {
 
         isTriggerOn = true;
-        int vkCodeC = 0x43;
+        int d = 100;
         Rectangle originalBound = SecureFrame.frame.getBounds();
         Rectangle hiddenBounds = new Rectangle(-10000,0, (int) originalBound.getWidth(), (int) originalBound.getHeight());
         // continuously check if a keypress is hit
@@ -37,20 +35,22 @@ public class KeyListener implements Runnable {
 
 
             // checks for visibility
-            if(isPressed(VK_F10.code)){
+            if(isPressed(VK_F10.code, d)){
                 // makes it so you can toggle the visiility of the jframe
                 boolean reverse = !SecureFrame.frame.getBounds().equals(originalBound);
                 Rectangle bound = reverse ? originalBound : hiddenBounds;
                 SecureFrame.frame.setBounds(bound);
-                delay();
             }
 
             // start typing
-            else if(isPressed(VK_OEM_PLUS.code)){
-                System.out.println("pressed plus");
-                delay();
+            else if(isPressed(VK_OEM_PLUS.code, d)){
+
             }
 
+            // ends typing
+            else if (isPressed(VK_OEM_MINUS.code, d)){
+
+            }
 
             // now user is pressing control, so if user presses numpad up(8), numpad left(4), ...
             // move the frame by 100 px increments respectively to their direction
@@ -83,6 +83,14 @@ public class KeyListener implements Runnable {
                 }
             }
 
+            // listen for scrolling
+            else if(isPressed(VK_UP.code, d+65)){
+
+                PseudoType.increment(1);
+            }
+            else if(isPressed(VK_DOWN.code, d+65)){
+                PseudoType.increment(-1);
+            }
         }
     }
     public void waitForKeyRelease() {
@@ -99,16 +107,21 @@ public class KeyListener implements Runnable {
     }
 
 
-    public void delay(){
+    public void delay(int d){
         try {
-            Thread.sleep(100);
+            Thread.sleep(d);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
     public boolean isPressed(int vkCode){
         boolean t = (User32.INSTANCE.GetAsyncKeyState(vkCode) & 0x8000) != 0;
-//        if (t) delay();
+        return t;
+    }
+
+    public boolean isPressed(int vkCode, int d){
+        boolean t = isPressed(vkCode);
+        if(t) delay(d);
         return t;
     }
     public boolean runPseudoType(int vkCode) throws InterruptedException {
