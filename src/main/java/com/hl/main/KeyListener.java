@@ -17,22 +17,11 @@ public class KeyListener implements Runnable {
         short GetAsyncKeyState(int vKey);
     }
 
-    // VK_CODE, Indecie of text to point to
-    Map<Integer, Integer> map;
 
     static int currentIndex = 0;
     static volatile boolean isTriggerOn;
 
-    // Up Down respectively changes the toggle to paste
-    // - will assign the end, and PLUS will assign the start
-    int[] hotkeys = new int[]{VK_UP.code, VK_DOWN.code, VK_OEM_PLUS.code, VK_OEM_MINUS.code};
-
-    public KeyListener() {
-        map = new HashMap<>();
-        for(int i = 0; i < hotkeys.length; i++){
-            map.put(hotkeys[i], i);
-        }
-    }
+    public KeyListener() {}
 
 
     @Override
@@ -44,59 +33,90 @@ public class KeyListener implements Runnable {
         Rectangle hiddenBounds = new Rectangle(-10000,0, (int) originalBound.getWidth(), (int) originalBound.getHeight());
         // continuously check if a keypress is hit
         while (isTriggerOn) {
+
+
+
             // checks for visibility
-            if((User32.INSTANCE.GetAsyncKeyState(VK_F10.code) & 0x8000) != 0){
+            if(isPressed(VK_F10.code)){
                 // makes it so you can toggle the visiility of the jframe
                 boolean reverse = !SecureFrame.frame.getBounds().equals(originalBound);
                 Rectangle bound = reverse ? originalBound : hiddenBounds;
                 SecureFrame.frame.setBounds(bound);
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
+                delay();
             }
-            else if((User32.INSTANCE.GetAsyncKeyState(VK_OEM_PLUS.code) & 0x8000) != 0){
-                try {
-                    Main.handler.replyMessage("test from java");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+
+            // start typing
+            else if(isPressed(VK_OEM_PLUS.code)){
+                System.out.println("pressed plus");
+                delay();
             }
 
 
-            // iterates through the hashmap
-//            for(Map.Entry<Integer, Integer> entry : map.entrySet()){
-//                // chceks if a button from the hotkey is pressed
-//                try {
-//
-//                    if(runPseudoType(entry.getKey())){
-//                         try {
-//                             Thread.sleep(100);
-//                         } catch (InterruptedException e) {
-//                             throw new RuntimeException(e);
-//                         }
-//                    }
-//
-//
-//                } catch (InterruptedException e) {
-//                    throw new RuntimeException(e);
-//                }
-//            }
+            // now user is pressing control, so if user presses numpad up(8), numpad left(4), ...
+            // move the frame by 100 px increments respectively to their direction
+            else if(isPressed(VK_CONTROL.code)) {
 
 
+                Rectangle current = SecureFrame.frame.getBounds();
+                int step = 100;
+                int newX = current.x;
+                int newY = current.y;
+                boolean moved = false;
+
+                if (isPressed(VK_NUMPAD8.code)) {
+                    newY -= step;
+                    moved = true;
+                } else if (isPressed(VK_NUMPAD2.code)) {
+                    newY += step;
+                    moved = true;
+                } else if (isPressed(VK_NUMPAD4.code)) {
+                    newX -= step;
+                    moved = true;
+                } else if (isPressed(VK_NUMPAD6.code)) {
+                    newX += step;
+                    moved = true;
+                }
+
+                if (moved) {
+                    SecureFrame.frame.setLocation(newX, newY);
+                    waitForKeyRelease(); // prevent key repeat noise
+                }
+            }
 
         }
     }
+    public void waitForKeyRelease() {
+        try {
+            while (isPressed(VK_NUMPAD8.code) ||
+                    isPressed(VK_NUMPAD2.code) ||
+                    isPressed(VK_NUMPAD4.code) ||
+                    isPressed(VK_NUMPAD6.code)) {
+                Thread.sleep(50);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+
+    public void delay(){
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
     public boolean isPressed(int vkCode){
-        return (User32.INSTANCE.GetAsyncKeyState(vkCode) & 0x8000) != 0;
+        boolean t = (User32.INSTANCE.GetAsyncKeyState(vkCode) & 0x8000) != 0;
+//        if (t) delay();
+        return t;
     }
     public boolean runPseudoType(int vkCode) throws InterruptedException {
         boolean t = isPressed(vkCode);
         if(t){
             // will put the indecie to recieve from
             isTriggerOn = false;
-            PseudoType.write(map.get(vkCode));
+            PseudoType.write(0);
             isTriggerOn = true;
         }
 

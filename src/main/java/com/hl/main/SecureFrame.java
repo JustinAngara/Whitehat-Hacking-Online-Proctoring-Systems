@@ -99,7 +99,7 @@ public class SecureFrame implements Runnable{
         titleLabel.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.BLACK));
 
         // body content as JTextArea
-        JTextArea contentArea = new JTextArea("hidden from screenshare\ntesttetetstastauaiwhd\nauwheuioashdfuioasfihojuioahnfsiuhosdiuhf");
+        JTextArea contentArea = new JTextArea("hidden from screenshare\ntuiwahuioawhuioriouah\nioashduiasuiod");
         setAreaProperties(contentArea);
 
 
@@ -129,7 +129,7 @@ public class SecureFrame implements Runnable{
         return panel;
     }
     private static void setAreaProperties(JTextArea contentArea){
-        contentArea.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        contentArea.setFont(new Font("Segoe UI", Font.BOLD, 18));
         contentArea.setForeground(textColor);
         contentArea.setOpaque(false);
         contentArea.setEditable(false);
@@ -275,9 +275,11 @@ public class SecureFrame implements Runnable{
 
     }
 
+
     /**
      * failsafe if accidentally brick an entire application
      * note: it has happened, don't test on external project
+     * This method attempts multiple approaches to undo stealth modifications
      */
     public static void undoChangedProperties(){
         if (hwnd == null) {
@@ -285,18 +287,71 @@ public class SecureFrame implements Runnable{
             return;
         }
 
-        boolean affinityResult = User32.INSTANCE.SetWindowDisplayAffinity(hwnd, WDA_MONITOR);
-        System.out.println("Restore SetWindowDisplayAffinity result: " + affinityResult);
+        System.out.println("Attempting to remove window stealth protection...");
 
+        // Method 1: Try to restore Window Display Affinity to normal monitoring
+        boolean affinityResult1 = User32.INSTANCE.SetWindowDisplayAffinity(hwnd, WDA_MONITOR);
+        System.out.println("Method 1 - SetWindowDisplayAffinity(WDA_MONITOR) result: " + affinityResult1);
+
+        // Method 2: Try setting affinity to 0 (default/none)
+        boolean affinityResult2 = User32.INSTANCE.SetWindowDisplayAffinity(hwnd, 0);
+        System.out.println("Method 2 - SetWindowDisplayAffinity(0) result: " + affinityResult2);
+
+        // Get current extended window style
         long exStyle = getWindowLong(hwnd, User32.GWL_EXSTYLE);
-        long newStyle = exStyle & ~(User32.WS_EX_TRANSPARENT | User32.WS_EX_NOREDIRECTIONBITMAP);
-        setWindowLong(hwnd, User32.GWL_EXSTYLE, newStyle);
+        System.out.println("Current extended style: 0x" + Long.toHexString(exStyle));
 
+        // Remove stealth-related extended window styles
+        long newStyle = exStyle & ~(
+                User32.WS_EX_TRANSPARENT |       // Remove transparency (click-through)
+                        User32.WS_EX_NOREDIRECTIONBITMAP | // Remove no-redirection bitmap
+                        0x00000080                       // Remove WS_EX_TOOLWINDOW
+        );
+
+        // Apply the restored style
+        long setResult = setWindowLong(hwnd, User32.GWL_EXSTYLE, newStyle);
+        System.out.println("SetWindowLong result: " + setResult);
+
+        // Force multiple window updates
         User32.INSTANCE.InvalidateRect(hwnd, null, true);
         User32.INSTANCE.UpdateWindow(hwnd);
+        User32.INSTANCE.ShowWindow(hwnd, 5); // SW_SHOW
 
-        System.out.println("Window protection removed");
+        // Try hiding and showing the window to reset its state
+        User32.INSTANCE.ShowWindow(hwnd, 0); // SW_HIDE
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        User32.INSTANCE.ShowWindow(hwnd, 5); // SW_SHOW
+
+        // Restore normal window behavior at Java level
+        SwingUtilities.invokeLater(() -> {
+            frame.setVisible(true);  // Show again to reset
+            frame.toFront();
+            frame.repaint();
+        });
+
+        // Wait and force final updates
+        try {
+            Thread.sleep(200);
+            User32.INSTANCE.InvalidateRect(hwnd, null, true);
+            User32.INSTANCE.UpdateWindow(hwnd);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        System.out.println("Stealth removal attempted with multiple methods");
+        System.out.println("Extended style changed from: 0x" + Long.toHexString(exStyle) +
+                " to: 0x" + Long.toHexString(newStyle));
+        System.out.println("If window is still hidden from screenshare, you may need to:");
+        System.out.println("1. Restart the application completely");
+        System.out.println("2. Create a new window instance");
+        System.out.println("Note: WDA_EXCLUDE can be persistent until window recreation");
     }
+
+
     public static void changeIcon() throws MalformedURLException {
         URL url = new File("C:\\Users\\justi\\IdeaProjects\\Honorlock\\configs\\walk-0.png").toURI().toURL();
 
