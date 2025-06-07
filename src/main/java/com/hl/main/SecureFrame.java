@@ -65,7 +65,7 @@ public class SecureFrame implements Runnable{
     }
 
     public static void frameSetup() throws Exception {
-        textColor = new Color(235, 235, 245);
+        textColor = new Color(255, 255, 200);
         // Hide console window if running from command line
         hideConsoleWindow();
 
@@ -96,11 +96,11 @@ public class SecureFrame implements Runnable{
         titleLabel.setForeground(textColor);
         titleLabel.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.BLACK));
 
-        contentArea = new JTextArea("CONTENT");
+        contentArea = new JTextArea(Main.pt.getStringArr()[0]);
         setAreaProperties(contentArea);
 
-        JPanel titleContainer = createColoredPanel(new Color(48, 25, 52, 160));
-        contentContainer = createColoredPanel(new Color(38, 20, 46, 160));
+        JPanel titleContainer = createColoredPanel(new Color(151, 120, 255, 160));
+        contentContainer = createColoredPanel(new Color(153, 153, 255, 160));
 
         titleContainer.add(titleLabel, BorderLayout.CENTER);
         contentContainer.add(contentArea, BorderLayout.CENTER);

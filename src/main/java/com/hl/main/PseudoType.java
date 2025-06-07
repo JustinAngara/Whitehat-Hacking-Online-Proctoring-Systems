@@ -13,28 +13,30 @@ import java.io.FileReader;
 import java.io.IOException;
 
 
+import static com.sun.jna.platform.win32.Win32VK.VK_OEM_MINUS;
 import static com.sun.jna.platform.win32.WinUser.INPUT.INPUT_KEYBOARD;
 import static com.sun.jna.platform.win32.WinUser.KEYBDINPUT.KEYEVENTF_KEYUP;
 
 public class PseudoType {
-    static int index = 0;
 
-    static String fileLoc ="C:\\Users\\justi\\IdeaProjects\\Honorlock\\configs\\CopyCFG.txt";
-    public static String[] stringsArr;
+    String fileLoc ="C:\\Users\\justi\\IdeaProjects\\Honorlock\\configs\\CopyCFG.txt";
+    private int index = 0;
+    private String[] stringsArr;
+
     public interface User32 extends StdCallLibrary {
         User32Ext INSTANCE = Native.load("user32", User32Ext.class, W32APIOptions.DEFAULT_OPTIONS);
 
         int SendInput(int nInputs, Pointer pInputs, int cbSize);
 
     }
-    public static void setup() throws FileNotFoundException, InterruptedException {
+    public void setup() throws FileNotFoundException, InterruptedException {
         populate();
     }
 
     /*
     * This method is used to increment the index in which we want to grab the string
     * */
-    public static int increment(int delta){
+    public int increment(int delta){
         int length = stringsArr.length;
 
         // wrap around using modular arithmetic
@@ -51,7 +53,7 @@ public class PseudoType {
     }
 
 
-    public static void populate() throws FileNotFoundException {
+    public void populate() throws FileNotFoundException {
         // go to file location and add
         BufferedReader reader;
         String line, z = "";
@@ -69,6 +71,10 @@ public class PseudoType {
 
     }
 
+    public String[] getStringArr(){
+        return stringsArr;
+    }
+
     /*
     * This method is used to remove any escape character that interfere
     * with the type configuration
@@ -79,17 +85,18 @@ public class PseudoType {
         return s;
     }
 
-    public static void write(int i) throws InterruptedException {
-        String sentence = stringsArr[i];
+    public void write() throws InterruptedException {
+        String sentence = stringsArr[index];
         // now individually press each one,
-        for(int z =0; z< sentence.length(); z++){
+        for(int z = 0; z < sentence.length(); z++){
+            if(KeyListener.isPressed(VK_OEM_MINUS.code)) return;
+
+
             int vkCode = charToVirtualKey(sentence.charAt(z));
             int random = (int)(Math.random()*100);
-            pressKey(vkCode);
             Thread.sleep(random);
+            pressKey(vkCode);
         }
-
-
     }
     public static int charToVirtualKey(char ch) {
         if (ch >= 'A' && ch <= 'Z') return ch; // A-Z

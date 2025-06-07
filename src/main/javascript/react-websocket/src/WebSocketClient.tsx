@@ -11,12 +11,12 @@ const WebSocketClient: React.FC = () => {
     ws.current = new WebSocket("ws://localhost:8080/ws");
 
     ws.current.onopen = () => {
-      console.log("✅ Connected to Java backend");
+      console.log("Connected to Java backend");
       appendMessage("Connected to Java WebSocket server");
     };
 
     ws.current.onmessage = (event) => {
-      console.log("📨 Received:", event.data);
+      console.log("Received:", event.data);
       appendMessage(`Java: ${event.data}`);
     };
 
@@ -41,6 +41,12 @@ const WebSocketClient: React.FC = () => {
       setInputValue(""); // clear input field
     }
   };
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
 
   return (
     <div>
@@ -49,6 +55,7 @@ const WebSocketClient: React.FC = () => {
       <input
         id="inputField"
         value={inputValue}
+        onKeyDown={handleKeyDown}
         onChange={(e) => setInputValue(e.target.value)}
         placeholder="Type a message"
       />

@@ -17,7 +17,7 @@ public class KeyListener implements Runnable {
         short GetAsyncKeyState(int vKey);
     }
 
-    static volatile boolean isTriggerOn;
+    static volatile boolean writeOn;
 
     public KeyListener() {}
 
@@ -25,15 +25,12 @@ public class KeyListener implements Runnable {
     @Override
     public void run() {
 
-        isTriggerOn = true;
+        writeOn = false;
         int d = 100;
         Rectangle originalBound = SecureFrame.frame.getBounds();
         Rectangle hiddenBounds = new Rectangle(-10000,0, (int) originalBound.getWidth(), (int) originalBound.getHeight());
         // continuously check if a keypress is hit
-        while (isTriggerOn) {
-
-
-
+        while (true) {
             // checks for visibility
             if(isPressed(VK_F10.code, d)){
                 // makes it so you can toggle the visiility of the jframe
@@ -44,16 +41,17 @@ public class KeyListener implements Runnable {
 
             // start typing
             else if(isPressed(VK_OEM_PLUS.code, d)){
-
-            }
-
-            // ends typing
-            else if (isPressed(VK_OEM_MINUS.code, d)){
-
+                writeOn = true;
+                try {
+                    Main.pt.write();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
 
             // now user is pressing control, so if user presses numpad up(8), numpad left(4), ...
             // move the frame by 100 px increments respectively to their direction
+            // it looks messy ;-; will fix soon
             else if(isPressed(VK_CONTROL.code)) {
 
 
@@ -83,14 +81,9 @@ public class KeyListener implements Runnable {
                 }
             }
 
-            // listen for scrolling
-            else if(isPressed(VK_UP.code, d+65)){
-
-                PseudoType.increment(1);
-            }
-            else if(isPressed(VK_DOWN.code, d+65)){
-                PseudoType.increment(-1);
-            }
+            // listen for scrolling through indicies
+            else if(isPressed(VK_UP.code, d+65)) { Main.pt.increment(1); }
+            else if(isPressed(VK_DOWN.code, d+65)) { Main.pt.increment(-1); }
         }
     }
     public void waitForKeyRelease() {
@@ -114,7 +107,7 @@ public class KeyListener implements Runnable {
             throw new RuntimeException(e);
         }
     }
-    public boolean isPressed(int vkCode){
+    public static boolean isPressed(int vkCode){
         boolean t = (User32.INSTANCE.GetAsyncKeyState(vkCode) & 0x8000) != 0;
         return t;
     }
@@ -122,17 +115,6 @@ public class KeyListener implements Runnable {
     public boolean isPressed(int vkCode, int d){
         boolean t = isPressed(vkCode);
         if(t) delay(d);
-        return t;
-    }
-    public boolean runPseudoType(int vkCode) throws InterruptedException {
-        boolean t = isPressed(vkCode);
-        if(t){
-            // will put the indecie to recieve from
-            isTriggerOn = false;
-            PseudoType.write(0);
-            isTriggerOn = true;
-        }
-
         return t;
     }
 

@@ -1,4 +1,5 @@
 package com.hl.main;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
@@ -7,10 +8,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 public class Main {
     static WebSocketHandler handler;
+    static PseudoType pt;
     public static void main(String[] args) throws Exception {
 
-
-        PseudoType.setup();
+        pt = new PseudoType();
+        pt.setup();
 
         // creates frame
         SecureFrame s = new SecureFrame();
@@ -29,9 +31,11 @@ public class Main {
         executor.execute(k);
 
 
+
+
         // will run springboot
-//        ConfigurableApplicationContext context = SpringApplication.run(WebSocketApplication.class, args);
-//        handler = context.getBean(WebSocketHandler.class);
+        ConfigurableApplicationContext context = SpringApplication.run(WebSocketApplication.class, args);
+        handler = context.getBean(WebSocketHandler.class);
 
         // no longer point
         executor.shutdown();
