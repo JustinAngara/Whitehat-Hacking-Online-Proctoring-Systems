@@ -34,8 +34,8 @@ public class Main {
 
 
         // will run springboot
-        ConfigurableApplicationContext context = SpringApplication.run(WebSocketApplication.class, args);
-        handler = context.getBean(WebSocketHandler.class);
+//        ConfigurableApplicationContext context = SpringApplication.run(WebSocketApplication.class, args);
+//        handler = context.getBean(WebSocketHandler.class);
 
         // no longer point
         executor.shutdown();

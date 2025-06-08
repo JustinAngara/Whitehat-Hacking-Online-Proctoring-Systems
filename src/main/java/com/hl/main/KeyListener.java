@@ -3,10 +3,6 @@ import com.sun.jna.Library;
 import com.sun.jna.Native;
 
 import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 import static com.sun.jna.platform.win32.Win32VK.*;
 
@@ -39,8 +35,8 @@ public class KeyListener implements Runnable {
                 SecureFrame.frame.setBounds(bound);
             }
 
-            // start typing
-            else if(isPressed(VK_OEM_PLUS.code, d)){
+            //` or ~ this is tilde
+            if(isPressed(VK_OEM_3.code, d)){
                 writeOn = true;
                 try {
                     Main.pt.write();
@@ -49,41 +45,50 @@ public class KeyListener implements Runnable {
                 }
             }
 
+
             // now user is pressing control, so if user presses numpad up(8), numpad left(4), ...
             // move the frame by 100 px increments respectively to their direction
-            // it looks messy ;-; will fix soon
+
             else if(isPressed(VK_CONTROL.code)) {
+                // listens for keybinds to change frame location
+                changeFramePosition();
 
 
-                Rectangle current = SecureFrame.frame.getBounds();
-                int step = 100;
-                int newX = current.x;
-                int newY = current.y;
-                boolean moved = false;
 
-                if (isPressed(VK_NUMPAD8.code)) {
-                    newY -= step;
-                    moved = true;
-                } else if (isPressed(VK_NUMPAD2.code)) {
-                    newY += step;
-                    moved = true;
-                } else if (isPressed(VK_NUMPAD4.code)) {
-                    newX -= step;
-                    moved = true;
-                } else if (isPressed(VK_NUMPAD6.code)) {
-                    newX += step;
-                    moved = true;
-                }
-
-                if (moved) {
-                    SecureFrame.frame.setLocation(newX, newY);
-                    waitForKeyRelease(); // prevent key repeat noise
-                }
             }
 
             // listen for scrolling through indicies
             else if(isPressed(VK_UP.code, d+65)) { Main.pt.increment(1); }
             else if(isPressed(VK_DOWN.code, d+65)) { Main.pt.increment(-1); }
+        }
+    }
+
+
+    public void changeFramePosition(){
+
+        Rectangle current = SecureFrame.frame.getBounds();
+        int step = 100;
+        int newX = current.x;
+        int newY = current.y;
+        boolean moved = false;
+
+        if (isPressed(VK_NUMPAD8.code)) {
+            newY -= step;
+            moved = true;
+        } else if (isPressed(VK_NUMPAD2.code)) {
+            newY += step;
+            moved = true;
+        } else if (isPressed(VK_NUMPAD4.code)) {
+            newX -= step;
+            moved = true;
+        } else if (isPressed(VK_NUMPAD6.code)) {
+            newX += step;
+            moved = true;
+        }
+
+        if (moved) {
+            SecureFrame.frame.setLocation(newX, newY);
+            waitForKeyRelease(); // prevent key repeat noise
         }
     }
     public void waitForKeyRelease() {
