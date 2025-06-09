@@ -21,6 +21,8 @@ public class DisplayProcessesGUI extends JFrame {
         setSize(800, 600);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
+        setAlwaysOnTop(true);
+
 
         JLabel titleLabel = new JLabel("Display Processes", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
@@ -38,9 +40,9 @@ public class DisplayProcessesGUI extends JFrame {
         sideList.setFont(new Font("Monospaced", Font.PLAIN, 14));
 
         // Labels above each list
-        JLabel mainListLabel = new JLabel("Process Details");
+        JLabel mainListLabel = new JLabel("Background Processes");
         mainListLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        JLabel sideListLabel = new JLabel("Process Names");
+        JLabel sideListLabel = new JLabel("Hidden Applications");
         sideListLabel.setFont(new Font("Arial", Font.BOLD, 16));
 
         JPanel mainPanel = new JPanel(new BorderLayout());
@@ -62,7 +64,7 @@ public class DisplayProcessesGUI extends JFrame {
         add(centerPanel, BorderLayout.CENTER);
 
         // add button to bottom right
-        JButton actionButton = new JButton("Perform Action");
+        JButton actionButton = new JButton("Update data");
         actionButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -91,28 +93,32 @@ public class DisplayProcessesGUI extends JFrame {
         }
     }
 
-
+    /**
+     * Method used for changing/updating contents of the processes
+     * */
     public void parseProcessToString() {
         ph = new ProcessHandler();
         ph.getProcessName();
 
         List<ProcessData> allProcesses = ph.getProcessList();
 
-        // Main list: all processes in readable format
+        // LHS list: all processes in readable format
         List<String> mainDescriptions = allProcesses.stream()
                 .map(ProcessData::toString)
                 .toList();
         updateMainList(mainDescriptions);
 
-        // Right-hand side list: only processes with exclusion flag
+        // RHS List: only processes with exclusion flag
         List<String> excludedProcesses = new ArrayList<>();
         Set<String> seenNames = new HashSet<>();
 
         for (ProcessData process : allProcesses) {
             String name = process.getProcessName();
-            if (seenNames.add(name)) { // avoid redundant checks
+            // avoid redundant checks
+            if (seenNames.add(name)) {
+                // checks if it is excluded from capture
                 boolean isVisible = ph.checkProcessDisplayAffinity(name);
-                if (!isVisible) { // i.e., excluded from capture
+                if (!isVisible) {
                     excludedProcesses.add(name);
                 }
             }

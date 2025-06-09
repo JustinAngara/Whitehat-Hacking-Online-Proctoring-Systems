@@ -16,12 +16,12 @@ public class ProcessHandler {
     private List<ProcessData> processList;
     private List<ProcessData> excludedFromCapture;
 
-    // Display Affinity Constants
+    // display Affinity Constants
     public static final int WDA_NONE = 0x00;
     public static final int WDA_MONITOR = 0x01;
     public static final int WDA_EXCLUDEFROMCAPTURE = 0x11;
 
-    // Extended User32 interface with missing methods
+    // extended User32 interface with missing methods
     public interface ExtendedUser32 extends StdCallLibrary {
         ExtendedUser32 INSTANCE = Native.load("user32", ExtendedUser32.class);
 
@@ -60,12 +60,12 @@ public class ProcessHandler {
                 ProcessData process = new ProcessData(pid, exeFile, exeFile);
                 processList.add(process);
 
-                System.out.println("PID: " + pid + " | Process: " + exeFile);
+//                System.out.println("PID: " + pid + " | Process: " + exeFile);
 
                 if (process.hasExcludedWindows()) {
-                    System.out.println("Process has excluded windows:");
+//                    System.out.println("Process has excluded windows:");
                     for (ProcessData.WindowData w : process.getExcludedWindows()) {
-                        System.out.println("  " + w.getTitle());
+//                        System.out.println("  " + w.getTitle());
                     }
                 }
             }
@@ -73,7 +73,7 @@ public class ProcessHandler {
             Kernel32.INSTANCE.CloseHandle(snapshot);
         }
 
-        System.out.println("Total processes stored: " + processList.size());
+//        System.out.println("Total processes stored: " + processList.size());
     }
 
     public boolean checkProcessDisplayAffinity(String targetProcess) {
@@ -94,12 +94,12 @@ public class ProcessHandler {
         }
 
         if (matchingPIDs.isEmpty()) {
-            System.out.println("No running processes named " + targetProcess);
+//            System.out.println("No running processes named " + targetProcess);
             return false;
         }
 
-        System.out.println("Found PIDs for " + targetProcess + ": " + matchingPIDs);
-        System.out.println("Checking display affinity for all windows...\n");
+//        System.out.println("Found PIDs for " + targetProcess + ": " + matchingPIDs);
+//        System.out.println("Checking display affinity for all windows...\n");
 
         final boolean[] anyExcluded = {false};
 
@@ -132,7 +132,7 @@ public class ProcessHandler {
     }
 
 
-    // Other methods remain the same...
+    // some getter methods
     public List<ProcessData> getProcessList() {
         return new ArrayList<>(processList);
     }
@@ -153,6 +153,7 @@ public class ProcessHandler {
     public int getProcessCount() {
         return processList.size();
     }
+
 
     public void printStoredProcesses() {
         System.out.println("=== Stored Processes ===");
