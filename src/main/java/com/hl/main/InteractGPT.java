@@ -1,4 +1,5 @@
 package com.hl.main;
+
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -7,16 +8,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Base64;
 
-
-public class InteractGemini {
-    public static void main(String[] args) {
-
-        String apiKey = "";
-        String message = "evaluate this screenshot";
-        BufferedImage bf = takeScreenshot();
-        sendGeminiImagePrompt(bf, apiKey, message);
-
-    }
+public class InteractGPT {
 
     public static BufferedImage takeScreenshot() {
         try {
@@ -28,28 +20,32 @@ public class InteractGemini {
             return null;
         }
     }
-    public static void sendGeminiImagePrompt(BufferedImage image, String apiKey, String promptText) {
+
+    public static void sendChatGPTImagePrompt(BufferedImage image, String apiKey, String promptText) {
         try {
-            // Convert BufferedImage to Base64 PNG string
+            // convert BufferedImage to Base64 PNG string
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(image, "png", baos);
             baos.flush();
             String base64Image = Base64.getEncoder().encodeToString(baos.toByteArray());
             baos.close();
 
-            // Prepare JSON request
+            // setup JSON request
             String jsonInput = """
             {
-              "contents": [
+              "model": "gpt-4o",
+              "messages": [
                 {
-                  "parts": [
+                  "role": "user",
+                  "content": [
                     {
+                      "type": "text",
                       "text": "%s"
                     },
                     {
-                      "inlineData": {
-                        "mimeType": "image/png",
-                        "data": "%s"
+                      "type": "image_url",
+                      "image_url": {
+                        "url": "data:image/png;base64,%s"
                       }
                     }
                   ]
@@ -58,21 +54,22 @@ public class InteractGemini {
             }
             """.formatted(promptText.replace("\"", "\\\""), base64Image);
 
-            // Set up connection
-            String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=" + apiKey;
+            // setup connection
+            String endpoint = "https://api.openai.com/v1/chat/completions";
 
             URL url = new URL(endpoint);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
 
-            // Send JSON body
+            // send JSON body
             try (OutputStream os = conn.getOutputStream()) {
                 os.write(jsonInput.getBytes("utf-8"));
             }
 
-            // Read response
+            // get response
             int status = conn.getResponseCode();
             InputStream responseStream = (status < 400) ? conn.getInputStream() : conn.getErrorStream();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(responseStream, "utf-8"))) {
@@ -81,7 +78,8 @@ public class InteractGemini {
                 while ((line = reader.readLine()) != null) {
                     response.append(line.trim());
                 }
-                System.out.println("Gemini Response: " + response);
+                System.out.println("ChatGPT Response: " + response);
+                // return this shit
             }
 
             conn.disconnect();
@@ -89,5 +87,12 @@ public class InteractGemini {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public static void main(String[] args) {
+        String apiKey = ""; // Insert your OpenAI API key
+        String message = "evaluate this screenshot";
+        BufferedImage bf = takeScreenshot();
+        sendChatGPTImagePrompt(bf, apiKey, message);
     }
 }
