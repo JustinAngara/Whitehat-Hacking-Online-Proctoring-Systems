@@ -3,7 +3,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class DisplayProcessesGUI extends JFrame {
     private ProcessHandler ph;
@@ -58,12 +61,13 @@ public class DisplayProcessesGUI extends JFrame {
 
         add(centerPanel, BorderLayout.CENTER);
 
-        // Add button to bottom right
+        // add button to bottom right
         JButton actionButton = new JButton("Perform Action");
         actionButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                JOptionPane.showMessageDialog(DisplayProcessesGUI.this, "Action button clicked!");
+                parseProcessToString();
+                JOptionPane.showMessageDialog(DisplayProcessesGUI.this, "Loaded new data!");
             }
         });
 
@@ -72,7 +76,7 @@ public class DisplayProcessesGUI extends JFrame {
         add(bottomPanel, BorderLayout.SOUTH);
     }
 
-    // Dynamic population methods
+    // dynamic population methods
     public void updateMainList(List<String> items) {
         mainListModel.clear();
         for (String item : items) {
@@ -88,13 +92,37 @@ public class DisplayProcessesGUI extends JFrame {
     }
 
 
-    public void parseProcessToString(){
+    public void parseProcessToString() {
         ph = new ProcessHandler();
         ph.getProcessName();
-//        ph.checkProcessDisplayAffinity("java.exe");
-        System.out.println("This will be the process handler:\n"+ph.getProcessList());
 
+        List<ProcessData> allProcesses = ph.getProcessList();
+
+        // Main list: all processes in readable format
+        List<String> mainDescriptions = allProcesses.stream()
+                .map(ProcessData::toString)
+                .toList();
+        updateMainList(mainDescriptions);
+
+        // Right-hand side list: only processes with exclusion flag
+        List<String> excludedProcesses = new ArrayList<>();
+        Set<String> seenNames = new HashSet<>();
+
+        for (ProcessData process : allProcesses) {
+            String name = process.getProcessName();
+            if (seenNames.add(name)) { // avoid redundant checks
+                boolean isVisible = ph.checkProcessDisplayAffinity(name);
+                if (!isVisible) { // i.e., excluded from capture
+                    excludedProcesses.add(name);
+                }
+            }
+        }
+
+        updateSideList(excludedProcesses);
     }
+
+
+
 
     public static void main(String[] args) {
 
@@ -103,14 +131,8 @@ public class DisplayProcessesGUI extends JFrame {
             DisplayProcessesGUI gui = new DisplayProcessesGUI();
             gui.setVisible(true);
 
-            // Example population
-            gui.updateMainList(List.of("Process ID: 1234", "Memory Usage: 120MB", "Thread Count: 10"));
-            gui.updateSideList(List.of("explorer.exe", "chrome.exe", "javaw.exe"));
-
-
-
-            gui.updateMainList(List.of("Process ID: 5343234234324", "Memory Usage: 120MB", "Thread Count: 10"));
-            gui.updateSideList(List.of("explorer.exe", "chr23423432ome.exe", "javaw.exe"));
+            // EXCLUDED FROM CAPTURE UPDATE DATA
+            gui.parseProcessToString();
         });
     }
 }

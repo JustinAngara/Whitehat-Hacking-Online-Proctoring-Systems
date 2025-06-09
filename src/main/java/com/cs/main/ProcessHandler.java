@@ -76,7 +76,7 @@ public class ProcessHandler {
         System.out.println("Total processes stored: " + processList.size());
     }
 
-    public void checkProcessDisplayAffinity(String targetProcess) {
+    public boolean checkProcessDisplayAffinity(String targetProcess) {
         Set<Integer> matchingPIDs = new HashSet<>();
 
         Tlhelp32.PROCESSENTRY32.ByReference entry = new Tlhelp32.PROCESSENTRY32.ByReference();
@@ -95,16 +95,14 @@ public class ProcessHandler {
 
         if (matchingPIDs.isEmpty()) {
             System.out.println("No running processes named " + targetProcess);
-            return;
+            return false;
         }
 
         System.out.println("Found PIDs for " + targetProcess + ": " + matchingPIDs);
         System.out.println("Checking display affinity for all windows...\n");
 
-        final int[] windowCount = {0};
-        final int[] excludedCount = {0};
+        final boolean[] anyExcluded = {false};
 
-        // Use ExtendedUser32 instead of User32
         ExtendedUser32.INSTANCE.EnumWindows((hWnd, data) -> {
             try {
                 if (!ExtendedUser32.INSTANCE.IsWindow(hWnd)) {
@@ -116,73 +114,23 @@ public class ProcessHandler {
                 int pid = pidRef.getValue();
 
                 if (matchingPIDs.contains(pid)) {
-                    windowCount[0]++;
-
-                    char[] windowTextW = new char[512];
-                    int titleLength = ExtendedUser32.INSTANCE.GetWindowTextW(hWnd, windowTextW, 512);
-                    String title = titleLength > 0 ? Native.toString(windowTextW) : "<No Title>";
-
-                    boolean isVisible = ExtendedUser32.INSTANCE.IsWindowVisible(hWnd);
-
-                    System.out.println("Window: \"" + title + "\"");
-                    System.out.println("  -> PID: " + pid);
-                    System.out.println("  -> HWND: 0x" + Long.toHexString(Pointer.nativeValue(hWnd.getPointer())));
-                    System.out.println("  -> Visible: " + isVisible);
-
                     IntByReference affinity = new IntByReference();
                     boolean result = ExtendedUser32.INSTANCE.GetWindowDisplayAffinity(hWnd, affinity);
 
-                    if (result) {
-                        int value = affinity.getValue();
-                        System.out.println("  -> Display Affinity: 0x" + Integer.toHexString(value));
-
-                        switch (value) {
-                            case ProcessHandler.WDA_NONE:
-                                System.out.println("     -> NONE (default)");
-                                break;
-                            case ProcessHandler.WDA_MONITOR:
-                                System.out.println("     -> MONITOR (normal capture allowed)");
-                                break;
-                            case ProcessHandler.WDA_EXCLUDEFROMCAPTURE:
-                                System.out.println("     -> EXCLUDED FROM CAPTURE");
-                                excludedCount[0]++;
-                                break;
-                            default:
-                                System.out.println("     -> UNKNOWN flag: " + value);
-                                break;
-                        }
-                    } else {
-                        int error = ExtendedUser32.INSTANCE.GetLastError();
-                        System.out.println("  -> Could not get affinity (Error: " + error + ")");
-
-                        switch (error) {
-                            case 5:
-                                System.out.println("     -> Access denied - may need elevated privileges");
-                                break;
-                            case 6:
-                                System.out.println("     -> Invalid window handle");
-                                break;
-                            case 120:
-                                System.out.println("     -> Function not supported on this Windows version");
-                                break;
-                            default:
-                                System.out.println("     -> Unknown error");
-                                break;
-                        }
+                    if (result && affinity.getValue() == ProcessHandler.WDA_EXCLUDEFROMCAPTURE) {
+                        anyExcluded[0] = true;
                     }
-                    System.out.println();
                 }
             } catch (Exception e) {
-                System.err.println("Error processing window: " + e.getMessage());
+                System.err.println("Error: " + e.getMessage());
             }
-
             return true;
         }, null);
 
-        System.out.println("Summary:");
-        System.out.println("  Total windows found for " + targetProcess + ": " + windowCount[0]);
-        System.out.println("  Windows excluded from capture: " + excludedCount[0]);
+        // return true if no exclusions; false if any window was excluded
+        return !anyExcluded[0];
     }
+
 
     // Other methods remain the same...
     public List<ProcessData> getProcessList() {
