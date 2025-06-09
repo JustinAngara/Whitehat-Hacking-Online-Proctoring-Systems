@@ -38,3 +38,6 @@ build/
 .DS_Store
 ###stored api keys ###
 .env
+
+### remove security folder ###
+src/main/java/com/cs/
