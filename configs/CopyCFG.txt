@@ -1,10 +1,10 @@
-EMPTY
-So this is the answer to my questions please work dangit
+This is saved note #1 (press keybind to start)
 <.ENDLINE>
-Sample text 1
+This is saved note #2 (press keybind to start)
 <.ENDLINE>
 WASDWASDWASD
 WA
+This is saved note #3 (press keybind to start)
 <.ENDLINE>
 WASDWASDWASD
 WA
@@ -20,11 +20,5 @@ WASDWASDWASD
 SAWED
 <.ENDLINE>
 WASDWASDWASD
-WA
-SDA
-W
-DSA
-D
-SAW
-A
+VeryNice es
 <.ENDLINE>

@@ -73,8 +73,23 @@ public class DisplayProcessesGUI extends JFrame {
             }
         });
 
+
+
+        // Add buttons to bottom panel
+        JButton revealButton = new JButton("Reveal");
+        revealButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                RemoveStealth.removeStealthByProcessName("cluely.exe");
+
+                JOptionPane.showMessageDialog(DisplayProcessesGUI.this, "Reveal button clicked!");
+            }
+        });
+
+
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         bottomPanel.add(actionButton);
+        bottomPanel.add(revealButton);
         add(bottomPanel, BorderLayout.SOUTH);
     }
 
@@ -125,6 +140,14 @@ public class DisplayProcessesGUI extends JFrame {
         }
 
         updateSideList(excludedProcesses);
+
+
+
+    }
+
+    public void display(){
+        Timer autoRefreshTimer = new Timer(7000, e -> parseProcessToString());
+        autoRefreshTimer.start();
     }
 
 
@@ -139,6 +162,7 @@ public class DisplayProcessesGUI extends JFrame {
 
             // EXCLUDED FROM CAPTURE UPDATE DATA
             gui.parseProcessToString();
+            gui.display();
         });
     }
 }

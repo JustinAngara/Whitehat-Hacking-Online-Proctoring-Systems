@@ -1,8 +1,8 @@
 /*
-* This class and package is a rebuttal against those stealthy GUIs!
-* I am in progress of creating an anti virus/cheat to remove stealth related GUIs!
-* Currently experimenting on how to approach this problem
-* */
+ * This class and package is a rebuttal against those stealthy GUIs!
+ * I am in progress of creating an anti virus/cheat to remove stealth related GUIs!
+ * Currently experimenting on how to approach this problem
+ * */
 
 package com.cs.main;
 
@@ -11,13 +11,18 @@ import com.sun.jna.Platform;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinDef.HWND;
+import com.sun.jna.platform.win32.WinNT;
+import com.sun.jna.platform.win32.Kernel32;
+import com.sun.jna.platform.win32.Tlhelp32;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.win32.StdCallLibrary;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class RemoveStealth {
     private static final int WDA_MONITOR = 0x00000001;
@@ -55,8 +60,8 @@ public class RemoveStealth {
     }
 
     // Kernel32 interface for process functions
-    public interface Kernel32 extends StdCallLibrary {
-        Kernel32 INSTANCE = Native.load("kernel32", Kernel32.class);
+    public interface Kernel32Extended extends StdCallLibrary {
+        Kernel32Extended INSTANCE = Native.load("kernel32", Kernel32Extended.class);
         int GetCurrentProcessId();
         HWND GetConsoleWindow();
         boolean ShowWindow(HWND hWnd, int nCmdShow);
@@ -86,6 +91,29 @@ public class RemoveStealth {
         } else {
             return User32.INSTANCE.SetWindowLong(hwnd, index, (int) newValue);
         }
+    }
+
+    /**
+     * Create a map of PID to process name for efficient lookup
+     * @return Map containing PID -> Process Name mappings
+     */
+    private static Map<Integer, String> createPidToProcessNameMap() {
+        Map<Integer, String> pidToProcessName = new HashMap<>();
+
+        Tlhelp32.PROCESSENTRY32.ByReference processEntry = new Tlhelp32.PROCESSENTRY32.ByReference();
+        WinNT.HANDLE snapshot = Kernel32.INSTANCE.CreateToolhelp32Snapshot(Tlhelp32.TH32CS_SNAPPROCESS, new WinDef.DWORD(0));
+
+        try {
+            while (Kernel32.INSTANCE.Process32Next(snapshot, processEntry)) {
+                String exeFile = Native.toString(processEntry.szExeFile);
+                int pid = processEntry.th32ProcessID.intValue();
+                pidToProcessName.put(pid, exeFile);
+            }
+        } finally {
+            Kernel32.INSTANCE.CloseHandle(snapshot);
+        }
+
+        return pidToProcessName;
     }
 
     /**
@@ -132,6 +160,11 @@ public class RemoveStealth {
         final List<HWND> foundWindows = new ArrayList<>();
         final String targetProcessName = processName.toLowerCase();
 
+        // Create PID to process name mapping
+        final Map<Integer, String> pidToProcessName = createPidToProcessNameMap();
+
+        System.out.println("Created process map with " + pidToProcessName.size() + " entries");
+
         WndEnumProc enumProc = new WndEnumProc() {
             @Override
             public boolean callback(HWND hWnd, int lParam) {
@@ -140,8 +173,8 @@ public class RemoveStealth {
                     int[] processId = new int[1];
                     User32.INSTANCE.GetWindowThreadProcessId(hWnd, processId);
 
-                    // Get process name from process ID
-                    String currentProcessName = getProcessNameById(processId[0]);
+                    // Get process name from our map
+                    String currentProcessName = pidToProcessName.get(processId[0]);
 
                     if (currentProcessName != null &&
                             currentProcessName.toLowerCase().equals(targetProcessName)) {
@@ -150,7 +183,7 @@ public class RemoveStealth {
                         if (isWindowVisible(hWnd)) {
                             foundWindows.add(hWnd);
                             System.out.println("Found target window - Process: " + currentProcessName +
-                                    ", Handle: " + hWnd.getPointer());
+                                    ", PID: " + processId[0] + ", Handle: " + hWnd.getPointer());
                         }
                     }
                 } catch (Exception e) {
@@ -163,21 +196,6 @@ public class RemoveStealth {
 
         User32.INSTANCE.EnumWindows(enumProc, 0);
         return foundWindows;
-    }
-
-    /**
-     * Get process name by process ID using additional Windows API calls
-     * @param processId The process ID
-     * @return Process name or null if not found
-     */
-    private static String getProcessNameById(int processId) {
-        try {
-            // This is a simplified approach - you might need to add more robust process name detection
-            // For now, we'll use a different approach by checking window titles and class names
-            return "unknown"; // Placeholder - see alternative method below
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     /**
@@ -370,8 +388,17 @@ public class RemoveStealth {
     public static void main(String[] args) {
         // Example usage:
         System.out.println("=== RemoveStealth Utility ===");
-        // Remove stealth from Java applications
-        int removed = removeStealthByPartialName("java");
-        System.out.println("Removed stealth from " + removed + " Java windows");
+
+        // Test with a specific process name
+        if (args.length > 0) {
+            String processName = args[0];
+            System.out.println("Attempting to remove stealth from process: " + processName);
+            int removed = removeStealthByProcessName(processName);
+            System.out.println("Removed stealth from " + removed + " windows for process: " + processName);
+        } else {
+            // Default test
+            int removed = removeStealthByPartialName("java");
+            System.out.println("Removed stealth from " + removed + " Java windows");
+        }
     }
 }
