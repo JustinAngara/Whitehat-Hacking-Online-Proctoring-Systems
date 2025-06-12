@@ -3,6 +3,7 @@ import com.sun.jna.Library;
 import com.sun.jna.Native;
 
 import java.awt.*;
+import java.io.IOException;
 
 import static com.sun.jna.platform.win32.Win32VK.*;
 
@@ -27,6 +28,15 @@ public class KeyListener implements Runnable {
         Rectangle hiddenBounds = new Rectangle(-10000,0, (int) originalBound.getWidth(), (int) originalBound.getHeight());
         // continuously check if a keypress is hit
         while (true) {
+            // this is for sending
+            if(isPressed(VK_0.code, d)){
+                try {
+                    Main.handler.replyMessage("This is a random message: "+Math.random()*1000);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
             // checks for visibility
             if(isPressed(VK_F10.code, d)){
                 // makes it so you can toggle the visiility of the jframe
