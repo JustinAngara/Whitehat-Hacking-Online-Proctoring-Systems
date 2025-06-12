@@ -1,6 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled, { keyframes } from "styled-components";
 
+// Types
+type Message = {
+  content: string;
+  type: 'system' | 'user' | 'server';
+  timestamp: Date;
+};
 
 // Animations
 const pulse = keyframes`
@@ -13,17 +19,30 @@ const slideIn = keyframes`
   to { transform: translateX(0); opacity: 1; }
 `;
 
+// Layout Wrapper to Center
+export const CenteredWrapper = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #1a1a2e, #0f0f23);
+  overflow: hidden;
+`;
+
 // Styled Components
 const Container = styled.div`
   max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
   padding: 2rem;
   background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
-  min-height: 100vh;
   font-family: 'Fira Code', 'Monaco', 'Cascadia Code', monospace;
   color: #e0e6ed;
   display: flex;
   flex-direction: column;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(100, 255, 218, 0.1);
 `;
 
 const Button = styled.button`
@@ -60,7 +79,6 @@ const MessagesContainer = styled.div`
   padding: 1rem;
   margin-bottom: 1rem;
   backdrop-filter: blur(10px);
-  flex-grow: 1;
 `;
 
 const MessageItem = styled.div`
@@ -169,7 +187,7 @@ const WebSocketClient: React.FC = () => {
   useEffect(scrollToBottom, [messages]);
 
   const connectWebSocket = () => {
-    skipScrollRef.current = true; // Prevent scroll on reconnect
+    skipScrollRef.current = true;
 
     if (ws.current && ws.current.readyState < 2) {
       ws.current.close();
@@ -207,8 +225,8 @@ const WebSocketClient: React.FC = () => {
       };
 
       ws.current = newWS;
-    } catch (err) {
-      appendMessage("Failed to create WebSocket connection", 'system');
+    } catch (error) {
+      appendMessage(`Failed to create WebSocket connection: ${error}`, 'system');
     }
   };
 
@@ -244,7 +262,21 @@ const WebSocketClient: React.FC = () => {
       <Button onClick={connectWebSocket} disabled={isReconnecting}>
         {isReconnecting ? "Connecting..." : "Refresh"}
       </Button>
-      <div>Status: {isConnected ? "Connected" : "Disconnected"}</div>
+      <div style={{ marginBottom: '1rem', color: isConnected ? '#64ffda' : '#ff6b6b' }}>
+        <span
+          style={{
+            display: 'inline-block',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            marginRight: '0.5rem',
+            backgroundColor: isConnected ? '#64ffda' : '#ff6b6b',
+            boxShadow: `0 0 10px ${isConnected ? 'rgba(100, 255, 218, 0.5)' : 'rgba(255, 107, 107, 0.5)'}`,
+            animation: isConnected ? `${pulse} 2s infinite` : 'none'
+          }}
+        />
+        {isConnected ? "Connected" : "Disconnected"}
+      </div>
       <MessagesContainer>
         {messages.map((msg, i) => (
           <MessageItem key={i}>
