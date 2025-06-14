@@ -1,4 +1,6 @@
 package com.hl.main;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -11,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class WebSocketHandler extends TextWebSocketHandler {
+    private String content;
     private WebSocketSession session;
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
@@ -30,14 +33,26 @@ public class WebSocketHandler extends TextWebSocketHandler {
     @Override
     public void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String incoming = message.getPayload();
-        System.out.println("Received from React: " + incoming);
 
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode jsonNode = mapper.readTree(incoming);
+            content = jsonNode.get("content").asText();
+            updateContent();
 
+        } catch (Exception e) {
+            System.err.println("Error parsing JSON: " + e.getMessage());
+        }
+    }
+
+    public void updateContent(){
+        SecureFrame.changeContent(content);
     }
 
     public void replyMessage(String message) throws IOException {
         for (WebSocketSession session : sessions.values()) {
             if (session.isOpen()) {
+
                 session.sendMessage(new TextMessage(message));
             }
         }

@@ -9,16 +9,15 @@ import java.util.concurrent.ThreadPoolExecutor;
 public class Main {
     static WebSocketHandler handler;
     static PseudoType pt;
+    static SecureFrame s;
     public static void main(String[] args) throws Exception {
 
         pt = new PseudoType();
         pt.setup();
 
         // creates frame
-        SecureFrame s = new SecureFrame();
+        s = new SecureFrame();
         s.run();
-
-
 
         // this will run KeyListener
         int coreCount = Runtime.getRuntime().availableProcessors();
@@ -29,8 +28,6 @@ public class Main {
         // put in another thread so it works async
         KeyListener k = new KeyListener();
         executor.execute(k);
-
-
 
 
         // will run springboot

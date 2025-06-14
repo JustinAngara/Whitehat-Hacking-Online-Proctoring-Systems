@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes, css } from "styled-components"; // Add css import
 
 // Types
 type Message = {
@@ -82,7 +82,7 @@ const MessagesContainer = styled.div`
 `;
 
 const MessageItem = styled.div`
-  animation: ${slideIn} 0.3s ease-out;
+  ${css`animation: ${slideIn} 0.3s ease-out;`} // Wrap in css helper
   margin-bottom: 1rem;
 `;
 
@@ -165,6 +165,18 @@ const Input = styled.input`
   &::placeholder {
     color: #666;
   }
+`;
+
+// Status indicator with pulse animation wrapped in css
+const StatusIndicator = styled.span<{ connected: boolean }>`
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  background-color: ${props => props.connected ? '#64ffda' : '#ff6b6b'};
+  box-shadow: ${props => `0 0 10px ${props.connected ? 'rgba(100, 255, 218, 0.5)' : 'rgba(255, 107, 107, 0.5)'}`};
+  ${props => props.connected && css`animation: ${pulse} 2s infinite;`} // Wrap in css helper
 `;
 
 const WebSocketClient: React.FC = () => {
@@ -263,18 +275,7 @@ const WebSocketClient: React.FC = () => {
         {isReconnecting ? "Connecting..." : "Refresh"}
       </Button>
       <div style={{ marginBottom: '1rem', color: isConnected ? '#64ffda' : '#ff6b6b' }}>
-        <span
-          style={{
-            display: 'inline-block',
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            marginRight: '0.5rem',
-            backgroundColor: isConnected ? '#64ffda' : '#ff6b6b',
-            boxShadow: `0 0 10px ${isConnected ? 'rgba(100, 255, 218, 0.5)' : 'rgba(255, 107, 107, 0.5)'}`,
-            animation: isConnected ? `${pulse} 2s infinite` : 'none'
-          }}
-        />
+        <StatusIndicator connected={isConnected} />
         {isConnected ? "Connected" : "Disconnected"}
       </div>
       <MessagesContainer>

@@ -28,13 +28,9 @@ public class KeyListener implements Runnable {
         Rectangle hiddenBounds = new Rectangle(-10000,0, (int) originalBound.getWidth(), (int) originalBound.getHeight());
         // continuously check if a keypress is hit
         while (true) {
-            // this is for sending
+            // this is for reading bacj
             if(isPressed(VK_0.code, d)){
-                try {
-                    Main.handler.replyMessage("This is a random message: "+Math.random()*1000);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                Main.handler.updateContent();
             }
 
             // checks for visibility
