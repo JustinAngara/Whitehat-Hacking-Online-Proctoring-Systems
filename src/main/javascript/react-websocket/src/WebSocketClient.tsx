@@ -1,14 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import styled, { keyframes, css } from "styled-components"; // Add css import
+import styled, { keyframes, css } from "styled-components";
 
-// Types
 type Message = {
   content: string;
   type: 'system' | 'user' | 'server';
   timestamp: Date;
 };
 
-// Animations
 const pulse = keyframes`
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
@@ -19,19 +17,6 @@ const slideIn = keyframes`
   to { transform: translateX(0); opacity: 1; }
 `;
 
-// Layout Wrapper to Center
-export const CenteredWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle at center, #1a1a2e, #0f0f23);
-  overflow: hidden;
-`;
-
-// Styled Components
 const Container = styled.div`
   max-width: 800px;
   width: 100%;
@@ -51,13 +36,10 @@ const Button = styled.button`
   border: none;
   border-radius: 8px;
   color: #0f0f23;
-  font-family: inherit;
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   margin-bottom: 1rem;
 
   &:hover {
@@ -82,7 +64,7 @@ const MessagesContainer = styled.div`
 `;
 
 const MessageItem = styled.div`
-  ${css`animation: ${slideIn} 0.3s ease-out;`} // Wrap in css helper
+  ${css`animation: ${slideIn} 0.3s ease-out;`}
   margin-bottom: 1rem;
 `;
 
@@ -167,7 +149,6 @@ const Input = styled.input`
   }
 `;
 
-// Status indicator with pulse animation wrapped in css
 const StatusIndicator = styled.span<{ connected: boolean }>`
   display: inline-block;
   width: 8px;
@@ -176,7 +157,7 @@ const StatusIndicator = styled.span<{ connected: boolean }>`
   margin-right: 0.5rem;
   background-color: ${props => props.connected ? '#64ffda' : '#ff6b6b'};
   box-shadow: ${props => `0 0 10px ${props.connected ? 'rgba(100, 255, 218, 0.5)' : 'rgba(255, 107, 107, 0.5)'}`};
-  ${props => props.connected && css`animation: ${pulse} 2s infinite;`} // Wrap in css helper
+  ${props => props.connected && css`animation: ${pulse} 2s infinite;`}
 `;
 
 const WebSocketClient: React.FC = () => {
@@ -211,6 +192,7 @@ const WebSocketClient: React.FC = () => {
 
     try {
       const newWS = new WebSocket("ws://localhost:8080/ws");
+      newWS.binaryType = "blob";
 
       newWS.onopen = () => {
         setIsConnected(true);
@@ -219,7 +201,16 @@ const WebSocketClient: React.FC = () => {
       };
 
       newWS.onmessage = (event) => {
-        appendMessage(event.data, 'server');
+        if (typeof event.data === "string") {
+          appendMessage(event.data, 'server');
+        } else {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const imageUrl = reader.result as string;
+            appendMessage(`<img src="${imageUrl}" style="max-width:100%; border-radius:8px;" />`, 'server');
+          };
+          reader.readAsDataURL(event.data);
+        }
       };
 
       newWS.onerror = () => {
@@ -256,7 +247,7 @@ const WebSocketClient: React.FC = () => {
 
   const sendMessage = () => {
     if (ws.current?.readyState === WebSocket.OPEN && inputValue.trim()) {
-      ws.current.send(JSON.stringify({ action: "user_input", content: inputValue }));
+      ws.current.send(inputValue); // Raw message: "screenshot"
       appendMessage(inputValue, 'user');
       setInputValue("");
     }
@@ -278,6 +269,7 @@ const WebSocketClient: React.FC = () => {
         <StatusIndicator connected={isConnected} />
         {isConnected ? "Connected" : "Disconnected"}
       </div>
+
       <MessagesContainer>
         {messages.map((msg, i) => (
           <MessageItem key={i}>
@@ -287,11 +279,12 @@ const WebSocketClient: React.FC = () => {
               </MessagePrefix>
               <MessageTimestamp>{msg.timestamp.toLocaleTimeString()}</MessageTimestamp>
             </MessageHeader>
-            <MessageContent>{msg.content}</MessageContent>
+            <MessageContent dangerouslySetInnerHTML={{ __html: msg.content }} />
           </MessageItem>
         ))}
         <div ref={messagesEndRef} />
       </MessagesContainer>
+
       <InputContainer>
         <Input
           value={inputValue}

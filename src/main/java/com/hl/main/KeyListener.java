@@ -8,13 +8,14 @@ import java.io.IOException;
 import static com.sun.jna.platform.win32.Win32VK.*;
 
 public class KeyListener implements Runnable {
+    static volatile boolean writeOn;
+
     public interface User32 extends Library {
         User32 INSTANCE = Native.load("user32", User32.class);
 
         short GetAsyncKeyState(int vKey);
     }
 
-    static volatile boolean writeOn;
 
     public KeyListener() {}
 
@@ -28,13 +29,19 @@ public class KeyListener implements Runnable {
         Rectangle hiddenBounds = new Rectangle(-10000,0, (int) originalBound.getWidth(), (int) originalBound.getHeight());
         // continuously check if a keypress is hit
         while (true) {
-            // this is for reading bacj
+            // this is for reading back the content from the springboot
             if(isPressed(VK_0.code, d)){
+                // take screenshot
+                ScreenshotHandler.sendToClients();
+
+                // update the content
                 Main.handler.updateContent();
             }
 
+
+
             // checks for visibility
-            if(isPressed(VK_F10.code, d)){
+            else if(isPressed(VK_F10.code, d)){
                 // makes it so you can toggle the visiility of the jframe
                 boolean reverse = !SecureFrame.frame.getBounds().equals(originalBound);
                 Rectangle bound = reverse ? originalBound : hiddenBounds;
@@ -42,7 +49,7 @@ public class KeyListener implements Runnable {
             }
 
             //` or ~ this is tilde
-            if(isPressed(VK_OEM_3.code, d)){
+            else if(isPressed(VK_OEM_3.code, d)){
                 writeOn = true;
                 try {
                     Main.pt.write();
