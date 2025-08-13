@@ -30,18 +30,23 @@ public class KeyListener implements Runnable {
         // continuously check if a keypress is hit
         while (true) {
             // this is for reading back the content from the springboot
-            if(isPressed(VK_0.code, d)){
-                // take screenshot
-                ScreenshotHandler.sendToClients();
+//            if(isPressed(VK_0.code, d)){
+//                // take screenshot
+//                ScreenshotHandler.sendToClients();
+//
+//                // update the content
+//                Main.handler.updateContent();
+//            }
 
-                // update the content
-                Main.handler.updateContent();
+            // lets run up the gemini api calls
+            if(isPressed(VK_F9.code, 250)){
+                // run geminiapi call
+                Main.ga.displayPrompt();
             }
 
 
-
             // checks for visibility
-            else if(isPressed(VK_F10.code, d)){
+            if(isPressed(VK_F10.code, d)){
                 // makes it so you can toggle the visiility of the jframe
                 boolean reverse = !SecureFrame.frame.getBounds().equals(originalBound);
                 Rectangle bound = reverse ? originalBound : hiddenBounds;
@@ -49,14 +54,14 @@ public class KeyListener implements Runnable {
             }
 
             //` or ~ this is tilde
-            else if(isPressed(VK_OEM_3.code, d)){
-                writeOn = true;
-                try {
-                    Main.pt.write();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
+//            else if(isPressed(VK_OEM_3.code, d)){
+//                writeOn = true;
+//                try {
+//                    Main.pt.write();
+//                } catch (InterruptedException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }
 
 
             // now user is pressing control, so if user presses numpad up(8), numpad left(4), ...
@@ -71,8 +76,8 @@ public class KeyListener implements Runnable {
             }
 
             // listen for scrolling through indicies
-            else if(isPressed(VK_UP.code, d+65)) { Main.pt.increment(1); }
-            else if(isPressed(VK_DOWN.code, d+65)) { Main.pt.increment(-1); }
+//            else if(isPressed(VK_UP.code, d+65)) { Main.pt.increment(1); }
+//            else if(isPressed(VK_DOWN.code, d+65)) { Main.pt.increment(-1); }
         }
     }
 

@@ -166,6 +166,7 @@ const WebSocketClient: React.FC = () => {
   const [inputValue, setInputValue] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [fullImageUrl, setFullImageUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const skipScrollRef = useRef(false);
 
@@ -207,7 +208,11 @@ const WebSocketClient: React.FC = () => {
           const reader = new FileReader();
           reader.onload = () => {
             const imageUrl = reader.result as string;
-            appendMessage(`<img src="${imageUrl}" style="max-width:100%; border-radius:8px;" />`, 'server');
+
+            appendMessage(
+              `<img src="${imageUrl}" style="max-width: 200px; cursor: zoom-in; border-radius: 8px;" onclick="window.dispatchEvent(new CustomEvent('image-fullscreen', { detail: '${imageUrl}' }))" />`,
+              'server'
+            );
           };
           reader.readAsDataURL(event.data);
         }
@@ -240,6 +245,15 @@ const WebSocketClient: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      setFullImageUrl(customEvent.detail);
+    };
+    window.addEventListener("image-fullscreen", handler);
+    return () => window.removeEventListener("image-fullscreen", handler);
+  }, []);
+
   const appendMessage = (content: string, type: 'system' | 'user' | 'server') => {
     const msg: Message = { content, type, timestamp: new Date() };
     setMessages(prev => [...prev, msg]);
@@ -247,7 +261,7 @@ const WebSocketClient: React.FC = () => {
 
   const sendMessage = () => {
     if (ws.current?.readyState === WebSocket.OPEN && inputValue.trim()) {
-      ws.current.send(inputValue); // Raw message: "screenshot"
+      ws.current.send(JSON.stringify({ content: inputValue }));
       appendMessage(inputValue, 'user');
       setInputValue("");
     }
@@ -261,43 +275,64 @@ const WebSocketClient: React.FC = () => {
   };
 
   return (
-    <Container>
-      <Button onClick={connectWebSocket} disabled={isReconnecting}>
-        {isReconnecting ? "Connecting..." : "Refresh"}
-      </Button>
-      <div style={{ marginBottom: '1rem', color: isConnected ? '#64ffda' : '#ff6b6b' }}>
-        <StatusIndicator connected={isConnected} />
-        {isConnected ? "Connected" : "Disconnected"}
-      </div>
-
-      <MessagesContainer>
-        {messages.map((msg, i) => (
-          <MessageItem key={i}>
-            <MessageHeader type={msg.type}>
-              <MessagePrefix type={msg.type}>
-                {msg.type === 'system' ? 'SYS' : msg.type === 'user' ? 'YOU' : 'JAVA'}
-              </MessagePrefix>
-              <MessageTimestamp>{msg.timestamp.toLocaleTimeString()}</MessageTimestamp>
-            </MessageHeader>
-            <MessageContent dangerouslySetInnerHTML={{ __html: msg.content }} />
-          </MessageItem>
-        ))}
-        <div ref={messagesEndRef} />
-      </MessagesContainer>
-
-      <InputContainer>
-        <Input
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Enter command..."
-          disabled={!isConnected}
-        />
-        <Button onClick={sendMessage} disabled={!isConnected || !inputValue.trim()}>
-          Send
+    <>
+      <Container>
+        <Button onClick={connectWebSocket} disabled={isReconnecting}>
+          {isReconnecting ? "Connecting..." : "Refresh"}
         </Button>
-      </InputContainer>
-    </Container>
+        <div style={{ marginBottom: '1rem', color: isConnected ? '#64ffda' : '#ff6b6b' }}>
+          <StatusIndicator connected={isConnected} />
+          {isConnected ? "Connected" : "Disconnected"}
+        </div>
+
+        <MessagesContainer>
+          {messages.map((msg, i) => (
+            <MessageItem key={i}>
+              <MessageHeader type={msg.type}>
+                <MessagePrefix type={msg.type}>
+                  {msg.type === 'system' ? 'SYS' : msg.type === 'user' ? 'YOU' : 'JAVA'}
+                </MessagePrefix>
+                <MessageTimestamp>{msg.timestamp.toLocaleTimeString()}</MessageTimestamp>
+              </MessageHeader>
+              <MessageContent dangerouslySetInnerHTML={{ __html: msg.content }} />
+            </MessageItem>
+          ))}
+          <div ref={messagesEndRef} />
+        </MessagesContainer>
+
+        <InputContainer>
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder='Enter command or type "screenshot"...'
+            disabled={!isConnected}
+          />
+          <Button onClick={sendMessage} disabled={!isConnected || !inputValue.trim()}>
+            Send
+          </Button>
+        </InputContainer>
+      </Container>
+
+      {fullImageUrl && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0, left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999
+          }}
+          onClick={() => setFullImageUrl(null)}
+        >
+          <img src={fullImageUrl} style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: '8px' }} />
+        </div>
+      )}
+    </>
   );
 };
 

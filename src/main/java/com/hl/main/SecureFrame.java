@@ -376,6 +376,8 @@ public class SecureFrame implements Runnable{
     public void run() {
         try {
             System.out.println("hit the entry");
+
+            // add propreties
             changeProcessName("SystemService");
             frameSetup();
             changeProperties();

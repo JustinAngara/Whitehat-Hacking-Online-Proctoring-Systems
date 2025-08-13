@@ -10,8 +10,15 @@ public class Main {
     static WebSocketHandler handler;
     static PseudoType pt;
     static SecureFrame s;
-    public static void main(String[] args) throws Exception {
+    static GeminiAPI ga;
 
+    public static void main(String[] args) throws Exception {
+        // now we want to setup the api
+        APIHandler.run();
+
+        ga = new GeminiAPI();
+
+        // psuedo type
         pt = new PseudoType();
         pt.setup();
 
@@ -31,8 +38,8 @@ public class Main {
 
 
         // will run springboot
-        ConfigurableApplicationContext context = SpringApplication.run(WebSocketApplication.class, args);
-        handler = context.getBean(WebSocketHandler.class);
+//        ConfigurableApplicationContext context = SpringApplication.run(WebSocketApplication.class, args);
+//        handler = context.getBean(WebSocketHandler.class);
 
         // no longer point
         executor.shutdown();
