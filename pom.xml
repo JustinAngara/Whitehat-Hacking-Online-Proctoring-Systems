@@ -43,8 +43,9 @@
 
         <!-- Jackson for JSON handling -->
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20240303</version>
         </dependency>
 
         <!-- Optional: Lombok for cleaner code -->

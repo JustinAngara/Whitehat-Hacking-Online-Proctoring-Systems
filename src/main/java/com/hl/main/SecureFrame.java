@@ -21,6 +21,7 @@ public class SecureFrame implements Runnable{
     static Color textColor;
     static JTextArea contentArea;
     static JPanel contentContainer;
+
     // setup the JNA calls
     public interface User32 extends StdCallLibrary {
 
@@ -73,6 +74,11 @@ public class SecureFrame implements Runnable{
         frame = new JWindow();
         frame.setAlwaysOnTop(true);
         frame.setSize(600, 400);
+
+        // Disable all interaction capabilities
+        frame.setFocusable(false);
+        frame.setFocusableWindowState(false);
+
         applyRoundedCorners();
 
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -95,38 +101,54 @@ public class SecureFrame implements Runnable{
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         titleLabel.setForeground(textColor);
         titleLabel.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.BLACK));
+        titleLabel.setFocusable(false); // Disable focus
 
         contentArea = new JTextArea(Main.pt.getStringArr()[0]);
         setAreaProperties(contentArea);
 
-        JPanel titleContainer = createColoredPanel(new Color(151, 120, 255, 160));
-        contentContainer = createColoredPanel(new Color(153, 153, 255, 160));
+        // create scroll pane for content area - SOLID BACKGROUND
+        JScrollPane scrollPane = new JScrollPane(contentArea);
+        scrollPane.setOpaque(true);
+        scrollPane.setBackground(new Color(153, 153, 255));  // Solid background - no alpha
+        scrollPane.getViewport().setOpaque(true);
+        scrollPane.getViewport().setBackground(new Color(153, 153, 255));  // Solid background - no alpha
+        scrollPane.setBorder(null);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setFocusable(false); // Disable focus on scroll pane
+
+        JPanel titleContainer = createColoredPanel(new Color(151, 120, 255));  // Solid background
+        contentContainer = createColoredPanel(new Color(153, 153, 255));  // Solid background
+
+        // Disable focus on containers
+        titleContainer.setFocusable(false);
+        contentContainer.setFocusable(false);
 
         titleContainer.add(titleLabel, BorderLayout.CENTER);
-        contentContainer.add(contentArea, BorderLayout.CENTER);
+        // add scrollPane instead of contentArea directly
+        contentContainer.add(scrollPane, BorderLayout.CENTER);
 
         panel.add(titleContainer, BorderLayout.NORTH);
         panel.add(contentContainer, BorderLayout.CENTER);
+        panel.setFocusable(false); // Disable focus on main panel
 
         frame.getContentPane().add(panel);
-        frame.setBackground(new Color(0, 0, 0, 65));
+        frame.setBackground(new Color(0, 0, 0));  // Solid black background
     }
 
+
     public static void changeContent(String content) {
+        // invalidate the component first to force complete redraw
+        contentArea.invalidate();
+        contentContainer.invalidate();
+
         // clear the text area completely
         contentArea.setText("");
 
-        // force a complete repaint of the entire frame to clear ghost text
-        frame.repaint();
+        // force immediate paint operation
+        contentArea.paintImmediately(contentArea.getBounds());
 
-        // small delay to ensure the clear operation completes
-        try {
-            Thread.sleep(50);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-
+        // set new content
         contentArea.setText(content);
 
         // refresh the layout and repaint
@@ -139,6 +161,7 @@ public class SecureFrame implements Runnable{
     private static JPanel createTransparentPanel(LayoutManager layout) {
         JPanel panel = new JPanel(layout);
         panel.setOpaque(false);
+        panel.setFocusable(false); // Disable focus
         return panel;
     }
 
@@ -146,28 +169,32 @@ public class SecureFrame implements Runnable{
         JPanel panel = new JPanel(new BorderLayout());
         panel.setOpaque(true);
         panel.setBackground(bgColor);
+        panel.setFocusable(false); // Disable focus
         return panel;
     }
+
     private static void setAreaProperties(JTextArea contentArea){
         contentArea.setFont(new Font("Segoe UI", Font.BOLD, 18));
         contentArea.setForeground(textColor);
-        contentArea.setOpaque(false);
+        contentArea.setOpaque(true);
+        contentArea.setBackground(new Color(153, 153, 255));  // Solid background - no alpha
         contentArea.setEditable(false);
         contentArea.setWrapStyleWord(true);
         contentArea.setLineWrap(true);
         contentArea.setHighlighter(null);
-        contentArea.setFocusable(false);
+        contentArea.setFocusable(false); // Already present, but emphasized
         contentArea.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        // Additional properties to prevent interaction
+        contentArea.setSelectionStart(0);
+        contentArea.setSelectionEnd(0);
+        contentArea.getCaret().setVisible(false);
+        contentArea.setRequestFocusEnabled(false);
     }
 
     private static void applyRoundedCorners() {
         frame.setShape(new RoundRectangle2D.Double(0, 0, frame.getWidth(), frame.getHeight(), 40, 40));
     }
-
-
-
-
-
 
     /**
      * Interface for window enumeration
@@ -249,7 +276,7 @@ public class SecureFrame implements Runnable{
     }
 
     /**
-     * This will change the properties of the window, don't change UI beyond here
+     * This will change the properties of the window to make it click-through
      * */
     public static void changeProperties(){
         // Try multiple methods to find the JWindow handle
@@ -272,29 +299,27 @@ public class SecureFrame implements Runnable{
         boolean affinityResult = User32.INSTANCE.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDE);
         System.out.println("SetWindowDisplayAffinity result: " + affinityResult);
 
-        // set extended window styles
+        // Enhanced window styles for complete click-through behavior
         long exStyle = getWindowLong(hwnd, User32.GWL_EXSTYLE);
         long newStyle = exStyle
-                | User32.WS_EX_LAYERED
-                | User32.WS_EX_TRANSPARENT
-                | User32.WS_EX_NOREDIRECTIONBITMAP
-//                        | 0x00200000 // WS_EX_NOREDIRECTIONBITMAP
-                | 0x00000080; // WS_EX_TOOLWINDOW
-        long setResult = setWindowLong(hwnd, User32.GWL_EXSTYLE, newStyle);
-        System.out.println("result: " + setResult);
+                | User32.WS_EX_LAYERED           // Enable layered window
+                | User32.WS_EX_TRANSPARENT       // Make window click-through
+                | User32.WS_EX_NOREDIRECTIONBITMAP // Prevent bitmap redirection
+                | 0x00000080                     // WS_EX_TOOLWINDOW - excludes from Alt+Tab
+                | 0x00000008                     // WS_EX_TOPMOST - keeps on top
+                | 0x00000200;                    // WS_EX_NOACTIVATE - prevents activation
 
-        // force window update
+        long setResult = setWindowLong(hwnd, User32.GWL_EXSTYLE, newStyle);
+        System.out.println("SetWindowLong result: " + setResult);
+
+        // Force window update to apply changes
         User32.INSTANCE.InvalidateRect(hwnd, null, true);
         User32.INSTANCE.UpdateWindow(hwnd);
 
-        // allow clickability through
-
-        System.out.println("window is now protected from screen capture");
-        System.out.println("extended style changed from: 0x" + Long.toHexString(exStyle) +
+        System.out.println("Window is now click-through and protected from screen capture");
+        System.out.println("Extended style changed from: 0x" + Long.toHexString(exStyle) +
                 " to: 0x" + Long.toHexString(newStyle));
-
     }
-
 
     /**
      * failsafe if accidentally brick an entire application
@@ -323,7 +348,9 @@ public class SecureFrame implements Runnable{
         long newStyle = exStyle & ~(
                 User32.WS_EX_TRANSPARENT |       // Remove transparency (click-through)
                         User32.WS_EX_NOREDIRECTIONBITMAP | // Remove no-redirection bitmap
-                        0x00000080                       // Remove WS_EX_TOOLWINDOW
+                        0x00000080 |                     // Remove WS_EX_TOOLWINDOW
+                        0x00000008 |                     // Remove WS_EX_TOPMOST
+                        0x00000200                       // Remove WS_EX_NOACTIVATE
         );
 
         // apply the restored style
@@ -346,6 +373,8 @@ public class SecureFrame implements Runnable{
 
         // restore normal window behavior at Java level
         SwingUtilities.invokeLater(() -> {
+            frame.setFocusable(true);
+            frame.setFocusableWindowState(true);
             frame.setVisible(true);  // show again to reset
             frame.toFront();
             frame.repaint();
@@ -364,7 +393,6 @@ public class SecureFrame implements Runnable{
                 " to: 0x" + Long.toHexString(newStyle));
     }
 
-
     public static void changeIcon() throws MalformedURLException {
         URL url = new File("C:\\Users\\justi\\IdeaProjects\\Honorlock\\configs\\walk-0.png").toURI().toURL();
 
@@ -372,12 +400,13 @@ public class SecureFrame implements Runnable{
         Image img = kit.createImage(url);
         frame.setIconImage(img);
     }
+
     @Override
     public void run() {
         try {
             System.out.println("hit the entry");
 
-            // add propreties
+            // add properties
             changeProcessName("SystemService");
             frameSetup();
             changeProperties();

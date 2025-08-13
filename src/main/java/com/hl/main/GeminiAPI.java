@@ -10,12 +10,16 @@ import java.net.http.HttpResponse;
 import java.util.Base64;
 import javax.imageio.ImageIO;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 public class GeminiAPI {
 
     private static final String API_KEY = APIHandler.getGeminiKey();
-    private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + API_KEY;
+    private static final String GEMINI_API_URL =
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
-    private HttpClient httpClient;
+    private final HttpClient httpClient;
 
     public GeminiAPI() {
         this.httpClient = HttpClient.newHttpClient();
@@ -29,10 +33,13 @@ public class GeminiAPI {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(GEMINI_API_URL))
                     .header("Content-Type", "application/json")
+                    .header("x-goog-api-key", API_KEY) // API key in header
                     .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response =
+                    httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
             return parseGeminiResponse(response.body());
 
         } catch (Exception e) {
@@ -51,17 +58,20 @@ public class GeminiAPI {
     private String convertImageToBase64(BufferedImage image) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(image, "png", baos);
-        byte[] imageBytes = baos.toByteArray();
-        return Base64.getEncoder().encodeToString(imageBytes);
+        return Base64.getEncoder().encodeToString(baos.toByteArray());
     }
 
-
-
-
     private String createJsonPayload(String base64Image, String prompt) {
+        String escapedPrompt = prompt.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+
         return String.format("""
             {
               "contents": [{
+                "role": "user",
                 "parts": [
                   {"text": "%s"},
                   {
@@ -73,30 +83,48 @@ public class GeminiAPI {
                 ]
               }]
             }
-            """, prompt, base64Image);
+            """, escapedPrompt, base64Image);
     }
 
-    public void displayPrompt(){
-        // now this will give us the stuff
+    public void displayPrompt() {
         String answer = runScreenshotQuery(APIHandler.PROMPT);
-
-        // display it to the frame
         Main.s.changeContent(answer);
     }
 
     private String parseGeminiResponse(String responseBody) {
-        int textStart = responseBody.indexOf("\"text\":");
-        if (textStart != -1) {
-            textStart += 8;
-            int textEnd = responseBody.indexOf("\"", textStart);
-            if (textEnd != -1) {
-                return responseBody.substring(textStart, textEnd)
-                        .replace("\\n", "\n")
-                        .replace("\\\"", "\"")
-                        .replace("\\\\", "\\");
-            }
-        }
-        return "No response found";
-    }
+        try {
+            JSONObject root = new JSONObject(responseBody);
 
+            if (!root.has("candidates")) {
+                return "No candidates found\nRaw: " + responseBody;
+            }
+
+            JSONArray candidates = root.getJSONArray("candidates");
+            if (candidates.isEmpty()) {
+                return "No candidates in response";
+            }
+
+            JSONObject first = candidates.getJSONObject(0);
+            if (!first.has("content")) {
+                return "No content in first candidate\nRaw: " + responseBody;
+            }
+
+            JSONObject content = first.getJSONObject("content");
+            if (!content.has("parts")) {
+                return "No parts in content\nRaw: " + responseBody;
+            }
+
+            JSONArray parts = content.getJSONArray("parts");
+            for (int i = 0; i < parts.length(); i++) {
+                JSONObject part = parts.getJSONObject(i);
+                if (part.has("text")) {
+                    return part.getString("text");
+                }
+            }
+
+            return "No text found in parts\nRaw: " + responseBody;
+        } catch (Exception e) {
+            return "Parse error: " + e.getMessage() + "\nRaw: " + responseBody;
+        }
+    }
 }

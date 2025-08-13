@@ -46,7 +46,7 @@ public class KeyListener implements Runnable {
 
 
             // checks for visibility
-            if(isPressed(VK_F10.code, d)){
+            if(isPressed(VK_F10.code, 250)){
                 // makes it so you can toggle the visiility of the jframe
                 boolean reverse = !SecureFrame.frame.getBounds().equals(originalBound);
                 Rectangle bound = reverse ? originalBound : hiddenBounds;
