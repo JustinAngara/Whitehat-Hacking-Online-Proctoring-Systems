@@ -217,41 +217,62 @@ public class SecureFrame implements Runnable {
     }
 
     // ===== Hover + Scroll (key polled only when mouse over frame) =====
+    // ===== Hover-only scrolling (no keys, no Ctrl) =====
     private static void startHoverScrollThread() {
+        // How frequently we adjust the scroll and how big each tick is
+        final int SCROLL_INTERVAL_MS = 150;
+
         new Thread(() -> {
             while (true) {
                 try {
-                    if (frame == null || !frame.isShowing()) {
+                    if (frame == null || !frame.isShowing() || scrollPaneRef == null) {
                         Thread.sleep(100);
                         continue;
                     }
+
+                    // Get mouse and frame bounds (screen coordinates)
                     Point mousePos = MouseInfo.getPointerInfo().getLocation();
                     Rectangle bounds = frame.getBounds();
                     Point frameLoc = frame.getLocationOnScreen();
                     bounds.setLocation(frameLoc);
 
-                    if (bounds.contains(mousePos) && scrollPaneRef != null) {
-                        JScrollBar v = scrollPaneRef.getVerticalScrollBar();
-                        int step = v.getUnitIncrement() + 10;
+                    if (bounds.contains(mousePos)) {
+                        final JScrollBar vbar = scrollPaneRef.getVerticalScrollBar();
+                        if (vbar != null && vbar.isVisible()) {
+                            // Split frame vertically into 2 halves
+                            int midY = bounds.y + (bounds.height / 2);
 
-                        // Scroll down
-                        if ((User32Extra.INSTANCE.GetAsyncKeyState(VK_DOWN) & 0x8000) != 0) {
-                            v.setValue(v.getValue() + step);
-                            Thread.sleep(50);
-                        }
-                        // Scroll up
-                        if ((User32Extra.INSTANCE.GetAsyncKeyState(VK_UP) & 0x8000) != 0) {
-                            v.setValue(v.getValue() - step);
-                            Thread.sleep(50);
+                            // Base step (unit increment + a small boost for smoother movement)
+                            int baseStep = Math.max(4, vbar.getUnitIncrement() + 10);
+
+                            // Optional: speed scales slightly with distance from the middle
+                            int dyFromMid = Math.abs(mousePos.y - midY);
+                            // Scale factor in [1.0 .. ~2.0] depending on how far from the midline the cursor is
+                            double scale = 1.0 + (dyFromMid / (double)(bounds.height / 2)) * 1.0;
+                            final int step = (int)Math.round(baseStep * scale);
+
+                            if (mousePos.y < midY) {
+                                // Upper half -> scroll UP
+                                SwingUtilities.invokeLater(() ->
+                                        vbar.setValue(Math.max(0, vbar.getValue() - step))
+                                );
+                            } else if (mousePos.y > midY) {
+                                // Lower half -> scroll DOWN
+                                SwingUtilities.invokeLater(() ->
+                                        vbar.setValue(Math.min(vbar.getMaximum(), vbar.getValue() + step))
+                                );
+                            }
                         }
                     }
-                    Thread.sleep(10);
-                } catch (Exception e) {
-                    // keep overlay resilient
+
+                    Thread.sleep(SCROLL_INTERVAL_MS);
+                } catch (Exception ignored) {
+                    try { Thread.sleep(250); } catch (InterruptedException ie) { /* ignore */ }
                 }
             }
         }, "HoverScrollThread").start();
     }
+
 
     // ===== Window Style helpers =====
     public static long getWindowLong(HWND hwnd, int index) {

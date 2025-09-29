@@ -1,89 +1,98 @@
 package com.hl.main;
+
 import com.sun.jna.Library;
 import com.sun.jna.Native;
+import com.sun.jna.platform.win32.WinDef;
 
 import java.awt.*;
-import java.io.IOException;
 
 import static com.sun.jna.platform.win32.Win32VK.*;
 
 public class KeyListener implements Runnable {
     static volatile boolean writeOn;
+    private volatile boolean lastLeftDown = false; // for edge detection
 
     public interface User32 extends Library {
         User32 INSTANCE = Native.load("user32", User32.class);
-
         short GetAsyncKeyState(int vKey);
+        boolean GetCursorPos(WinDef.POINT lpPoint);
     }
-
 
     public KeyListener() {}
 
-
     @Override
     public void run() {
-
         writeOn = false;
         int d = 100;
-        Rectangle originalBound = SecureFrame.frame.getBounds();
-        Rectangle hiddenBounds = new Rectangle(-10000,0, (int) originalBound.getWidth(), (int) originalBound.getHeight());
-        // continuously check if a keypress is hit
-        while (true) {
-            // this is for reading back the content from the springboot
-//            if(isPressed(VK_0.code, d)){
-//                // take screenshot
-//                ScreenshotHandler.sendToClients();
-//
-//                // update the content
-//                Main.handler.updateContent();
-//            }
 
-            // lets run up the gemini api calls
-            if(isPressed(VK_F9.code, 250)){
-                // run geminiapi call
+        Rectangle originalBound = SecureFrame.frame.getBounds();
+        Rectangle hiddenBounds = new Rectangle(-10000, 0,
+                (int) originalBound.getWidth(), (int) originalBound.getHeight());
+
+        while (true) {
+            // F9 -> your Gemini call
+            if (isPressed(VK_Z.code, 250)) {
                 Main.ga.displayPrompt();
             }
 
-
-            // checks for visibility
-            if(isPressed(VK_F10.code, 250)){
-                // makes it so you can toggle the visiility of the jframe
-                boolean reverse = !SecureFrame.frame.getBounds().equals(originalBound);
-                Rectangle bound = reverse ? originalBound : hiddenBounds;
+            // F10 -> toggle visibility (move off-screen / restore)
+            if (isPressed(VK_F10.code, 250)) {
+                boolean restore = !SecureFrame.frame.getBounds().equals(originalBound);
+                Rectangle bound = restore ? originalBound : hiddenBounds;
                 SecureFrame.frame.setBounds(bound);
             }
 
-            //` or ~ this is tilde
-//            else if(isPressed(VK_OEM_3.code, d)){
-//                writeOn = true;
-//                try {
-//                    Main.pt.write();
-//                } catch (InterruptedException e) {
-//                    throw new RuntimeException(e);
-//                }
-//            }
-
-
-            // now user is pressing control, so if user presses numpad up(8), numpad left(4), ...
-            // move the frame by 100 px increments respectively to their direction
-
-            else if(isPressed(VK_CONTROL.code)) {
-                // listens for keybinds to change frame location
-                changeFramePosition();
-
-
-
+            // Ctrl held? then allow numpad move OR ctrl+click move
+            if (isPressed(VK_CONTROL.code)) {
+                // legacy numpad movement (kept as-is)
+//                changeFramePosition();
+                // NEW: Ctrl + Left Click -> move frame to cursor
+                maybeMoveFrameToCtrlClick();
             }
 
-            // listen for scrolling through indicies
-//            else if(isPressed(VK_UP.code, d+65)) { Main.pt.increment(1); }
-//            else if(isPressed(VK_DOWN.code, d+65)) { Main.pt.increment(-1); }
+            // keep the loop friendly to CPU
+            try { Thread.sleep(8); } catch (InterruptedException ignored) {}
         }
     }
 
+    /** On Ctrl + Left Click (edge), move frame to cursor (centered). */
+    private void maybeMoveFrameToCtrlClick() {
+        boolean leftDown = (User32.INSTANCE.GetAsyncKeyState(VK_LBUTTON.code) & 0x8000) != 0;
 
-    public void changeFramePosition(){
+        if (leftDown && !lastLeftDown) { // edge-triggered on press
+            WinDef.POINT pt = new WinDef.POINT();
+            if (User32.INSTANCE.GetCursorPos(pt)) {
+                // Center the frame on the click position. Change to false for top-left anchoring.
+                moveFrameTo(pt.x, pt.y, /*center=*/true);
+            }
+        }
+        lastLeftDown = leftDown;
+    }
 
+    private void moveFrameTo(int mouseX, int mouseY, boolean center) {
+        Rectangle bounds = SecureFrame.frame.getBounds();
+        int w = bounds.width;
+        int h = bounds.height;
+
+        int targetX = center ? mouseX - (w / 2) : mouseX;
+        int targetY = center ? mouseY - (h / 2) : mouseY;
+
+        // Optional: keep fully on the primary screen
+        Rectangle screen = GraphicsEnvironment
+                .getLocalGraphicsEnvironment()
+                .getDefaultScreenDevice()
+                .getDefaultConfiguration()
+                .getBounds();
+
+        targetX = Math.max(screen.x, Math.min(targetX, screen.x + screen.width - w));
+        targetY = Math.max(screen.y, Math.min(targetY, screen.y + screen.height - h));
+
+        final int finalTargetX = targetX;
+        final int finalTargetY = targetY;
+        EventQueue.invokeLater(() -> SecureFrame.frame.setLocation(finalTargetX, finalTargetY));
+    }
+
+    public void changeFramePosition() {
         Rectangle current = SecureFrame.frame.getBounds();
         int step = 100;
         int newX = current.x;
@@ -91,24 +100,21 @@ public class KeyListener implements Runnable {
         boolean moved = false;
 
         if (isPressed(VK_NUMPAD8.code)) {
-            newY -= step;
-            moved = true;
+            newY -= step; moved = true;
         } else if (isPressed(VK_NUMPAD2.code)) {
-            newY += step;
-            moved = true;
+            newY += step; moved = true;
         } else if (isPressed(VK_NUMPAD4.code)) {
-            newX -= step;
-            moved = true;
+            newX -= step; moved = true;
         } else if (isPressed(VK_NUMPAD6.code)) {
-            newX += step;
-            moved = true;
+            newX += step; moved = true;
         }
 
         if (moved) {
             SecureFrame.frame.setLocation(newX, newY);
-            waitForKeyRelease(); // prevent key repeat noise
+            waitForKeyRelease();
         }
     }
+
     public void waitForKeyRelease() {
         try {
             while (isPressed(VK_NUMPAD8.code) ||
@@ -122,24 +128,17 @@ public class KeyListener implements Runnable {
         }
     }
 
-
-    public void delay(int d){
-        try {
-            Thread.sleep(d);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-    public static boolean isPressed(int vkCode){
-        boolean t = (User32.INSTANCE.GetAsyncKeyState(vkCode) & 0x8000) != 0;
-        return t;
+    public void delay(int d) {
+        try { Thread.sleep(d); } catch (InterruptedException e) { throw new RuntimeException(e); }
     }
 
-    public boolean isPressed(int vkCode, int d){
+    public static boolean isPressed(int vkCode) {
+        return (User32.INSTANCE.GetAsyncKeyState(vkCode) & 0x8000) != 0;
+    }
+
+    public boolean isPressed(int vkCode, int d) {
         boolean t = isPressed(vkCode);
-        if(t) delay(d);
+        if (t) delay(d);
         return t;
     }
-
-
 }

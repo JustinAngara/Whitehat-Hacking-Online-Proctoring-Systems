@@ -17,7 +17,7 @@ public class GeminiAPI {
 
     private static final String API_KEY = APIHandler.getGeminiKey();
     private static final String GEMINI_API_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
     private final HttpClient httpClient;
 
@@ -26,6 +26,7 @@ public class GeminiAPI {
     }
 
     public String runQuery(BufferedImage bi, String prompt) {
+
         try {
             String base64Image = convertImageToBase64(bi);
             String jsonPayload = createJsonPayload(base64Image, prompt);
