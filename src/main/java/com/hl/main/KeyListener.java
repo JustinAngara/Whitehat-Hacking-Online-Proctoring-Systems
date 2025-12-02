@@ -5,6 +5,8 @@ import com.sun.jna.Native;
 import com.sun.jna.platform.win32.WinDef;
 
 import java.awt.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.sun.jna.platform.win32.Win32VK.*;
 
@@ -29,9 +31,14 @@ public class KeyListener implements Runnable {
         Rectangle hiddenBounds = new Rectangle(-10000, 0,
                 (int) originalBound.getWidth(), (int) originalBound.getHeight());
 
+        // create a scheduler/executenior
+
         while (true) {
             // F9 -> your Gemini call
-            if (isPressed(VK_Z.code, 250)) {
+            if (isPressed(VK_NUMPAD9.code, 250)) {
+                // no validation check, if this does get ran multiple times, there isn't enough api calls. therefore put it in its own thread
+//                Main.executor.execute(Main.ga.displayPrompt());
+                Main.s.changeContent("New Loading "+Math.random()*1000.0);
                 Main.ga.displayPrompt();
             }
 
@@ -42,16 +49,29 @@ public class KeyListener implements Runnable {
                 SecureFrame.frame.setBounds(bound);
             }
 
-            // Ctrl held? then allow numpad move OR ctrl+click move
-            if (isPressed(VK_CONTROL.code)) {
-                // legacy numpad movement (kept as-is)
-//                changeFramePosition();
-                // NEW: Ctrl + Left Click -> move frame to cursor
-                maybeMoveFrameToCtrlClick();
+            if (isPressed(VK_NUMPAD1.code, 250)) {
+                AudioListener.start();
             }
 
-            // keep the loop friendly to CPU
-            try { Thread.sleep(8); } catch (InterruptedException ignored) {}
+            if (isPressed(VK_NUMPAD3.code, 250)) {
+                AudioListener.close();
+            }
+
+            if (isPressed(VK_NUMPAD4.code, 250)) {
+                // perform api call
+                String content = Main.s.getContent();
+                if(!AudioListener.isRunning && !content.isEmpty()){
+                    Main.s.changeContent(content + "\nLoading1337");
+                    Main.ga.displayTransPrompt();
+
+
+                }
+            }
+
+            // Ctrl held? then allow numpad move OR ctrl+click move
+            if (isPressed(VK_CONTROL.code)) {
+                maybeMoveFrameToCtrlClick();
+            }
         }
     }
 
@@ -77,15 +97,15 @@ public class KeyListener implements Runnable {
         int targetX = center ? mouseX - (w / 2) : mouseX;
         int targetY = center ? mouseY - (h / 2) : mouseY;
 
-        // Optional: keep fully on the primary screen
-        Rectangle screen = GraphicsEnvironment
-                .getLocalGraphicsEnvironment()
-                .getDefaultScreenDevice()
-                .getDefaultConfiguration()
-                .getBounds();
-
-        targetX = Math.max(screen.x, Math.min(targetX, screen.x + screen.width - w));
-        targetY = Math.max(screen.y, Math.min(targetY, screen.y + screen.height - h));
+//        // Optional: keep fully on the primary screen
+//        Rectangle screen = GraphicsEnvironment
+//                .getLocalGraphicsEnvironment()
+//                .getDefaultScreenDevice()
+//                .getDefaultConfiguration()
+//                .getBounds();
+//
+//        targetX = Math.max(screen.x, Math.min(targetX, screen.x + screen.width - w));
+//        targetY = Math.max(screen.y, Math.min(targetY, screen.y + screen.height - h));
 
         final int finalTargetX = targetX;
         final int finalTargetY = targetY;

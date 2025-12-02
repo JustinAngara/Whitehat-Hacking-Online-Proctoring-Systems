@@ -142,3 +142,11 @@ This will compile `injector.exe` and `payload.dll` into the `src/main/c/` direct
 
 ## 📄 Configuration Files
 -   `configs/CopyCFG.txt`: Contains text snippets for the PseudoType feature. Each line or block separated by `<.ENDLINE>` is a distinct message that can be typed out.
+
+
+## Build the Project (New)
+1.) View -> Tool Windows -> Maven -> Clean
+
+2.) mvn -DskipTests clean package
+
+3.) Installed at src/target

@@ -11,7 +11,7 @@ public class Main {
     static PseudoType pt;
     static SecureFrame s;
     static GeminiAPI ga;
-
+//    static ThreadPoolExecutor executor;
     public static void main(String[] args) throws Exception {
         // now we want to setup the api
         APIHandler.run();
@@ -30,18 +30,18 @@ public class Main {
         int coreCount = Runtime.getRuntime().availableProcessors();
         System.out.println(coreCount);
 
-        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(coreCount);
+//        executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(coreCount);
 
         // put in another thread so it works async
         KeyListener k = new KeyListener();
-        executor.execute(k);
-
+//        executor.execute(k);
+        k.run();
 
         // will run springboot
 //        ConfigurableApplicationContext context = SpringApplication.run(WebSocketApplication.class, args);
 //        handler = context.getBean(WebSocketHandler.class);
 
         // no longer point
-        executor.shutdown();
+//        executor.shutdown();
     }
 }

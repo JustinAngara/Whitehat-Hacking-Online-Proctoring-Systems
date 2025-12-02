@@ -18,6 +18,8 @@ import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.sun.jna.platform.win32.Win32VK.VK_LEFT;
 import static com.sun.jna.platform.win32.Win32VK.VK_RIGHT;
@@ -198,9 +200,39 @@ public class SecureFrame implements Runnable {
         frame.repaint();
     }
 
+    private static void configureCodePane(JTextPane pane) {
+        pane.setEditable(false);
+        pane.setFocusable(false);
+        pane.setOpaque(true);
+        pane.setBackground(new Color(22, 22, 28));
+        pane.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        pane.putClientProperty("caretAspectRatio", 0.2f);
+
+        // Monospace font fallback chain
+        Font mono = new Font("JetBrains Mono", Font.PLAIN, 16);
+        if ("Dialog".equals(mono.getFamily())) mono = new Font("Consolas", Font.PLAIN, 16);
+        if ("Dialog".equals(mono.getFamily())) mono = new Font("Cascadia Mono", Font.PLAIN, 16);
+        if ("Dialog".equals(mono.getFamily())) mono = new Font("Courier New", Font.PLAIN, 16);
+        pane.setFont(mono);
+        
+        // Selection colors
+        UIManager.put("TextPane.selectionBackground", new Color(60, 65, 90));
+        pane.setSelectedTextColor(new Color(240, 240, 255));
+    }
+
+
+    public static String getContent(){
+        return contentArea.getText();
+    }
     public static void changeContent(String content) {
         contentArea.setText(content == null ? "" : content);
-        applySyntaxColors(contentArea);
+        try {
+            applySyntaxColors(contentArea);
+        } catch (StackOverflowError soe) {
+            // Fallback: base-only coloring if regex engine ever explodes
+            StyledDocument doc = contentArea.getStyledDocument();
+            doc.setCharacterAttributes(0, doc.getLength(), ATTR_BASE, true);
+        }
         contentArea.setCaretPosition(0);
         frame.repaint();
     }
@@ -217,9 +249,7 @@ public class SecureFrame implements Runnable {
     }
 
     // ===== Hover + Scroll (key polled only when mouse over frame) =====
-    // ===== Hover-only scrolling (no keys, no Ctrl) =====
     private static void startHoverScrollThread() {
-        // How frequently we adjust the scroll and how big each tick is
         final int SCROLL_INTERVAL_MS = 150;
 
         new Thread(() -> {
@@ -230,7 +260,6 @@ public class SecureFrame implements Runnable {
                         continue;
                     }
 
-                    // Get mouse and frame bounds (screen coordinates)
                     Point mousePos = MouseInfo.getPointerInfo().getLocation();
                     Rectangle bounds = frame.getBounds();
                     Point frameLoc = frame.getLocationOnScreen();
@@ -239,25 +268,17 @@ public class SecureFrame implements Runnable {
                     if (bounds.contains(mousePos)) {
                         final JScrollBar vbar = scrollPaneRef.getVerticalScrollBar();
                         if (vbar != null && vbar.isVisible()) {
-                            // Split frame vertically into 2 halves
                             int midY = bounds.y + (bounds.height / 2);
-
-                            // Base step (unit increment + a small boost for smoother movement)
                             int baseStep = Math.max(4, vbar.getUnitIncrement() + 10);
-
-                            // Optional: speed scales slightly with distance from the middle
                             int dyFromMid = Math.abs(mousePos.y - midY);
-                            // Scale factor in [1.0 .. ~2.0] depending on how far from the midline the cursor is
-                            double scale = 1.0 + (dyFromMid / (double)(bounds.height / 2)) * 1.0;
-                            final int step = (int)Math.round(baseStep * scale);
+                            double scale = 1.0 + (dyFromMid / (double) (bounds.height / 2)) * 1.0;
+                            final int step = (int) Math.round(baseStep * scale);
 
                             if (mousePos.y < midY) {
-                                // Upper half -> scroll UP
                                 SwingUtilities.invokeLater(() ->
                                         vbar.setValue(Math.max(0, vbar.getValue() - step))
                                 );
                             } else if (mousePos.y > midY) {
-                                // Lower half -> scroll DOWN
                                 SwingUtilities.invokeLater(() ->
                                         vbar.setValue(Math.min(vbar.getMaximum(), vbar.getValue() + step))
                                 );
@@ -272,7 +293,6 @@ public class SecureFrame implements Runnable {
             }
         }, "HoverScrollThread").start();
     }
-
 
     // ===== Window Style helpers =====
     public static long getWindowLong(HWND hwnd, int index) {
@@ -304,7 +324,6 @@ public class SecureFrame implements Runnable {
                 int n = User32.INSTANCE.GetClassNameA(hWnd, className, className.length);
                 if (n > 0) {
                     String cls = new String(className, 0, n);
-                    // JWindow/Frame classes on Windows typically match these:
                     if (cls.contains("SunAwtWindow") || cls.contains("SunAwtFrame")) {
                         foundWindow[0] = hWnd;
                         return false;
@@ -325,7 +344,6 @@ public class SecureFrame implements Runnable {
             return;
         }
 
-        // Exclude from screen capture
         User32.INSTANCE.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDE);
 
         long exStyle = getWindowLong(hwnd, User32.GWL_EXSTYLE);
@@ -356,7 +374,6 @@ public class SecureFrame implements Runnable {
     }
 
     public static void changeIcon() throws MalformedURLException {
-        // Optional: set app icon in taskbar if available
         File f = new File("C:\\Users\\justi\\IdeaProjects\\Honorlock\\configs\\walk-0.png");
         if (!f.exists()) return;
         URL url = f.toURI().toURL();
@@ -371,25 +388,6 @@ public class SecureFrame implements Runnable {
     }
 
     // ===== Syntax Highlighting =====
-    private static void configureCodePane(JTextPane pane) {
-        pane.setEditable(false);
-        pane.setFocusable(false);
-        pane.setOpaque(true);
-        pane.setBackground(new Color(22, 22, 28));
-        pane.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
-        pane.putClientProperty("caretAspectRatio", 0.2f);
-
-        // Monospace font choices
-        Font mono = new Font("JetBrains Mono", Font.PLAIN, 16);
-        if (mono.getFamily().equals("Dialog")) mono = new Font("Consolas", Font.PLAIN, 16);
-        if (mono.getFamily().equals("Dialog")) mono = new Font("Cascadia Mono", Font.PLAIN, 16);
-        if (mono.getFamily().equals("Dialog")) mono = new Font("Courier New", Font.PLAIN, 16);
-        pane.setFont(mono);
-
-        // Tweak selection colors
-        UIManager.put("TextPane.selectionBackground", new Color(60, 65, 90));
-        pane.setSelectedTextColor(new Color(240, 240, 255));
-    }
 
     private static final String[] JAVA_KEYWORDS = new String[]{
             "abstract","assert","boolean","break","byte","case","catch","char","class","const","continue","default",
@@ -398,6 +396,48 @@ public class SecureFrame implements Runnable {
             "short","static","strictfp","super","switch","synchronized","this","throw","throws","transient","try",
             "void","volatile","while","var","record","sealed","permits","non-sealed"
     };
+
+    // === Precompiled, safer patterns (avoid DOTALL with greedy wildcards) ===
+    // Robust block comment: handles multi-line comments and avoids catastrophic backtracking
+    private static final Pattern BLOCK_COMMENT = Pattern.compile(
+            "/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/",
+            Pattern.MULTILINE
+    );
+
+    private static final Pattern LINE_COMMENT = Pattern.compile(
+            "//[^\\r\\n]*",
+            Pattern.MULTILINE
+    );
+
+    private static final Pattern DQ_STRING = Pattern.compile(
+            "\"(?:\\\\.|[^\"\\\\])*\"",
+            Pattern.MULTILINE
+    );
+
+    private static final Pattern SQ_CHAR = Pattern.compile(
+            "'(?:\\\\.|[^'\\\\])+'",
+            Pattern.MULTILINE
+    );
+
+    private static final Pattern NUMBER = Pattern.compile(
+            "\\b(0x[0-9a-fA-F]+|\\d+(?:_\\d+)*(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)\\b",
+            Pattern.MULTILINE
+    );
+
+    private static final Pattern ANNOT = Pattern.compile(
+            "@\\w+",
+            Pattern.MULTILINE
+    );
+
+    private static final Pattern KEYWORDS = Pattern.compile(
+            "\\b(abstract|assert|boolean|break|byte|case|catch|char|class|const|continue|default|do|double|else|enum|extends|final|finally|float|for|goto|if|implements|import|instanceof|int|interface|long|native|new|package|private|protected|public|return|short|static|strictfp|super|switch|synchronized|this|throw|throws|transient|try|void|volatile|while|var|record|sealed|permits|non-sealed)\\b",
+            Pattern.MULTILINE
+    );
+
+    private static final Pattern TYPE_NAMES = Pattern.compile(
+            "\\b(?:class|interface|enum|record)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+            Pattern.MULTILINE
+    );
 
     private static SimpleAttributeSet ATTR_BASE, ATTR_KW, ATTR_TYPE, ATTR_NUM, ATTR_STR, ATTR_COM, ATTR_ANN;
 
@@ -419,45 +459,128 @@ public class SecureFrame implements Runnable {
         return a;
     }
 
+    /**
+     * Chunked, safer highlighter with overlap and quick pre-checks.
+     * If something goes wrong, we let the caller catch StackOverflowError and fall back.
+     */
     private static void applySyntaxColors(JTextPane pane) {
         StyledDocument doc = pane.getStyledDocument();
         String text;
         try {
             text = doc.getText(0, doc.getLength());
-        } catch (Exception e) {
+        } catch (BadLocationException e) {
             return;
         }
 
-        // Base
+        // Base first
         doc.setCharacterAttributes(0, text.length(), ATTR_BASE, true);
 
-        // Block comments
-        applyRegex(doc, text, "/\\*.*?\\*/", ATTR_COM, true);
-        // Line comments
-        applyRegex(doc, text, "//.*?$", ATTR_COM, true);
-        // Strings
-        applyRegex(doc, text, "\"([^\"\\\\]|\\\\.)*\"", ATTR_STR, true);
-        applyRegex(doc, text, "'([^'\\\\]|\\\\.)*'", ATTR_STR, true);
-        // Numbers
-        applyRegex(doc, text, "\\b(0x[0-9a-fA-F]+|\\d+(?:_\\d+)*(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)\\b", ATTR_NUM, false);
-        // Annotations
-        applyRegex(doc, text, "@\\w+", ATTR_ANN, false);
-        // Keywords
-        String kw = String.join("|", JAVA_KEYWORDS);
-        applyRegex(doc, text, "\\b(" + kw + ")\\b", ATTR_KW, false);
-        // Naive type names
-        applyRegex(doc, text, "\\b(?:class|interface|enum|record)\\s+([A-Za-z_][A-Za-z0-9_]*)", ATTR_TYPE, false);
+        // Fast substring checks to skip heavy passes if not present
+        final boolean hasBlock = text.indexOf("/*") >= 0;
+        final boolean hasLine = text.indexOf("//") >= 0;
+        final boolean hasDQ = text.indexOf('\"') >= 0;
+        final boolean hasSQ = text.indexOf('\'') >= 0;
+        final boolean hasAt = text.indexOf('@') >= 0;
+
+        // Chunking to avoid catastrophic engine work on huge docs
+        final int LEN = text.length();
+        final int CHUNK = 64 * 1024;      // 64KB chunk
+        final int OVERLAP = 1024;         // 1KB overlap to catch span across boundaries
+
+        int pos = 0;
+        while (pos < LEN) {
+            int end = Math.min(LEN, pos + CHUNK);
+            int from = Math.max(0, pos - OVERLAP);
+            int to = Math.min(LEN, end + OVERLAP);
+
+            // Highlight this window [from,to)
+            highlightWindow(doc, text, from, to, hasBlock, hasLine, hasDQ, hasSQ, hasAt);
+
+            pos = end;
+        }
+
+        // Keywords, numbers, and type names can safely be run once over the whole text
+        // (They don't use pathological constructs.)
+        applyPattern(doc, text, KEYWORDS, ATTR_KW, false);
+        applyPattern(doc, text, NUMBER, ATTR_NUM, false);
+        applyPattern(doc, text, TYPE_NAMES, ATTR_TYPE, true);
     }
 
-    private static void applyRegex(StyledDocument doc, String text, String pattern, AttributeSet attr, boolean dotAll) {
-        int flags = java.util.regex.Pattern.MULTILINE;
-        if (dotAll) flags |= java.util.regex.Pattern.DOTALL;
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile(pattern, flags).matcher(text);
+    private static void highlightWindow(StyledDocument doc,
+                                        String text,
+                                        int from, int to,
+                                        boolean hasBlock, boolean hasLine,
+                                        boolean hasDQ, boolean hasSQ, boolean hasAt) {
+        if (from >= to) return;
+        CharSequence slice = text.subSequence(from, to);
+
+        // Comments
+        if (hasBlock && indexOf(slice, "/*") >= 0) {
+            applyPattern(doc, text, BLOCK_COMMENT, ATTR_COM, false, from, to);
+        }
+        if (hasLine && indexOf(slice, "//") >= 0) {
+            applyPattern(doc, text, LINE_COMMENT, ATTR_COM, false, from, to);
+        }
+
+        // Strings / chars
+        if (hasDQ && indexOf(slice, "\"") >= 0) {
+            applyPattern(doc, text, DQ_STRING, ATTR_STR, false, from, to);
+        }
+        if (hasSQ && indexOf(slice, "'") >= 0) {
+            applyPattern(doc, text, SQ_CHAR, ATTR_STR, false, from, to);
+        }
+
+        // Annotations
+        if (hasAt && indexOf(slice, "@") >= 0) {
+            applyPattern(doc, text, ANNOT, ATTR_ANN, false, from, to);
+        }
+    }
+
+    // Lightweight indexOf for CharSequence
+    private static int indexOf(CharSequence cs, String needle) {
+        int n = needle.length();
+        if (n == 0) return 0;
+        char first = needle.charAt(0);
+        int len = cs.length();
+        for (int i = 0; i < len; i++) {
+            if (cs.charAt(i) == first) {
+                if (i + n <= len) {
+                    int j = 1;
+                    while (j < n && cs.charAt(i + j) == needle.charAt(j)) j++;
+                    if (j == n) return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    // Apply a pattern across whole text
+    private static void applyPattern(StyledDocument doc, String text, Pattern p, AttributeSet attr, boolean colorGroup1) {
+        Matcher m = p.matcher(text);
         while (m.find()) {
             int start = m.start();
             int len = m.end() - m.start();
             doc.setCharacterAttributes(start, len, attr, false);
-            if (m.groupCount() >= 1 && m.group(1) != null) {
+
+            if (colorGroup1 && m.groupCount() >= 1 && m.start(1) >= 0) {
+                int gStart = m.start(1);
+                int gLen = m.end(1) - m.start(1);
+                doc.setCharacterAttributes(gStart, gLen, attr, false);
+            }
+        }
+    }
+
+    // Apply a pattern restricted to [from,to)
+    private static void applyPattern(StyledDocument doc, String text, Pattern p, AttributeSet attr,
+                                     boolean colorGroup1, int from, int to) {
+        Matcher m = p.matcher(text);
+        m.region(from, to);
+        while (m.find()) {
+            int start = m.start();
+            int len = m.end() - m.start();
+            doc.setCharacterAttributes(start, len, attr, false);
+
+            if (colorGroup1 && m.groupCount() >= 1 && m.start(1) >= 0) {
                 int gStart = m.start(1);
                 int gLen = m.end(1) - m.start(1);
                 doc.setCharacterAttributes(gStart, gLen, attr, false);
