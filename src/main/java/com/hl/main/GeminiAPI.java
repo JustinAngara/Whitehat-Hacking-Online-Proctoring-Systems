@@ -82,8 +82,9 @@ public class GeminiAPI {
         // Optional: steer for coding quality
         JSONObject systemMsg = new JSONObject()
                 .put("role", "system")
-                .put("content", "You are a senior software engineer specializing in LeetCode-style problems. Prefer concise, correct answers that are relevant to coding interview questions. When code is requested, return the code first, then minimal notes. " +
-                        "Default language is C++ Unless context of screenshot says otherwise. Furthermore, focus on memory space optimization IF the algorithm in choice is considered as a 'top' pick");
+//                .put("content", "You are a senior software engineer specializing in LeetCode-style problems. Prefer concise, correct answers that are relevant to coding interview questions. When code is requested, return the code first, then minimal notes. " +
+//                        "Default language is C++ Unless context of screenshot says otherwise. Furthermore, focus on memory space optimization IF the algorithm in choice is considered as a 'top' pick");
+                .put("content", "Figure this question out and respond with the appropriate answer");
 
         // User content with text + image (vision)
         JSONObject textPart = new JSONObject()
@@ -146,12 +147,14 @@ public class GeminiAPI {
 
             JSONObject systemMsg = new JSONObject()
                     .put("role", "system")
-                    .put("content",
-                            "You are a senior software engineer specializing in system-level and algorithmic reasoning. "
-                                    + "When asked a question, assume it is coding-related unless clearly not. "
-                                    + "Default to **C++** unless syntax suggests another language. "
-                                    + "Provide runnable code first, followed by a low-level explanation covering stack/heap, "
-                                    + "runtime behavior, and compiler-level effects where relevant.");
+//                    .put("content",
+//                            "You are a senior software engineer specializing in system-level and algorithmic reasoning. "
+//                                    + "When asked a question, assume it is coding-related unless clearly not. "
+//                                    + "Default to **C++** unless syntax suggests another language. "
+//                                    + "Provide runnable code first, followed by a low-level explanation covering stack/heap, "
+//                                    + "runtime behavior, and compiler-level effects where relevant.");
+                        .put("content",
+                            "Analyze the content of the screenshot of the question. Do not extrapolate. The question must be solved if you see any even if it is checked.");
 
             JSONObject userMsg = new JSONObject()
                     .put("role", "user")

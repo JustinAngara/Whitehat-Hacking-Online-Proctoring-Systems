@@ -5,8 +5,6 @@ import com.sun.jna.Native;
 import com.sun.jna.platform.win32.WinDef;
 
 import java.awt.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.sun.jna.platform.win32.Win32VK.*;
 
@@ -19,7 +17,7 @@ public class KeyListener implements Runnable {
         short GetAsyncKeyState(int vKey);
         boolean GetCursorPos(WinDef.POINT lpPoint);
     }
-
+    
     public KeyListener() {}
 
     @Override
