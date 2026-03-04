@@ -39,8 +39,6 @@ public class KeyListener implements Runnable {
                 Main.s.changeContent("New Loading "+Math.random()*1000.0);
                 Main.ga.displayPrompt();
             }
-
-            // F10 -> toggle visibility (move off-screen / restore)
             if (isPressed(VK_F10.code, 250)) {
                 boolean restore = !SecureFrame.frame.getBounds().equals(originalBound);
                 Rectangle bound = restore ? originalBound : hiddenBounds;
@@ -66,9 +64,12 @@ public class KeyListener implements Runnable {
                 }
             }
 
-            // Ctrl held? then allow numpad move OR ctrl+click move
             if (isPressed(VK_CONTROL.code)) {
                 maybeMoveFrameToCtrlClick();
+            }
+            if(isPressed(VK_CONTROL.code) && isPressed(VK_RCONTROL.code) &&
+               isPressed(VK_L.code)) {
+                System.exit(0);
             }
         }
     }

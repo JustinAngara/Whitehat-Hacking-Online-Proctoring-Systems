@@ -250,5 +250,6 @@ public class APIHandler {
     public static String getGeminiKey() {
         // return get geminiKey
         return env.get("GEMINI_API_KEY");
+
     }
 }
